@@ -676,7 +676,9 @@ var RJFK = {
             name: 'KAGOSHIMA NORTH', waypoints: [
                 { name: 'KIRIS', x: 5, y: 20, alt: 6000 },
                 { name: 'SAKUR', x: 3, y: 10, alt: 4000 },
-                { name: 'FINAL', x: 0, y: 5, alt: 2500 }
+                { name: 'DOWNS', x: 5, y: 0, alt: 3000 },
+                { name: 'BASE', x: 3, y: -5, alt: 2500 },
+                { name: 'FNLSN', x: 0.5, y: -6, alt: 2000 }
             ]
         }
     ],
@@ -925,15 +927,25 @@ Aircraft.prototype.update = function(dt) {
         // Cross track error
         var crossTrack = taxf * locDirY - tayf * locDirX;
 
-        if (dist > 5) {
-            // Far: head toward intercept point 5nm before threshold
-            var interceptX = rwy.threshold.x - locDirX * 5;
-            var interceptY = rwy.threshold.y - locDirY * 5;
+        // Along track: positive = ahead of threshold in landing direction, negative = approach side
+        var alongTrack = taxf * locDirX + tayf * locDirY;
+
+        if (alongTrack > 0.5) {
+            // Aircraft is PAST the threshold (wrong side) - fly to intercept point
+            var interceptX = rwy.threshold.x - locDirX * 8;
+            var interceptY = rwy.threshold.y - locDirY * 8;
             var intDx = interceptX - this.x;
             var intDy = interceptY - this.y;
             this.targetHeading = (Math.atan2(intDx, intDy) * 180 / Math.PI + 360) % 360;
+        } else if (dist > 5) {
+            // Far on correct side: head toward intercept point 5nm before threshold
+            var interceptX2 = rwy.threshold.x - locDirX * 5;
+            var interceptY2 = rwy.threshold.y - locDirY * 5;
+            var intDx2 = interceptX2 - this.x;
+            var intDy2 = interceptY2 - this.y;
+            this.targetHeading = (Math.atan2(intDx2, intDy2) * 180 / Math.PI + 360) % 360;
         } else {
-            // Close: fly runway heading with cross-track correction
+            // Close on correct side: fly runway heading with cross-track correction
             var correction = Math.atan2(crossTrack, Math.max(0.5, dist)) * 180 / Math.PI;
             correction = Math.max(-30, Math.min(30, correction * 2));
             this.targetHeading = (rwyHdg + correction + 360) % 360;
