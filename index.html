@@ -1859,6 +1859,18 @@ function deselectAll() {
 
 function showCommand(ac) {
     cmdPanel.style.display = 'block';
+    // Position panel away from aircraft
+    var scale = Math.min(canvas.width, canvas.height) / (game.range * 2.2);
+    var acScreenY = canvas.height / 2 - ac.y * scale;
+    if (acScreenY > canvas.height * 0.5) {
+        // Aircraft in bottom half - show panel at top
+        cmdPanel.style.bottom = 'auto';
+        cmdPanel.style.top = '60px';
+    } else {
+        // Aircraft in top half - show panel at bottom
+        cmdPanel.style.top = 'auto';
+        cmdPanel.style.bottom = '10px';
+    }
     cmdCallsign.textContent = ac.callsign + ' (' + ac.type + ')';
 
     // Set current values
