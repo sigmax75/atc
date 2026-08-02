@@ -811,6 +811,31 @@ Aircraft.prototype.update = function(dt) {
         var dtDist = Math.sqrt(dtDx * dtDx + dtDy * dtDy);
         if (dtDist < 1.5) {
             addMessage(this.callsign + ' ' + dtWp.name + ' 通過', 'info');
+            // Advance currentWaypoint past the directed waypoint in STAR/SID
+            var advRoute = null;
+            if (this.starName) {
+                for (var ai = 0; ai < game.airport.stars.length; ai++) {
+                    if (game.airport.stars[ai].name === this.starName) { advRoute = game.airport.stars[ai].waypoints; break; }
+                }
+            } else if (this.sidName) {
+                for (var ai2 = 0; ai2 < game.airport.sids.length; ai2++) {
+                    if (game.airport.sids[ai2].name === this.sidName) { advRoute = game.airport.sids[ai2].waypoints; break; }
+                }
+            }
+            if (advRoute) {
+                for (var awi = 0; awi < advRoute.length; awi++) {
+                    if (advRoute[awi].name === dtWp.name) {
+                        this.currentWaypoint = awi + 1;
+                        break;
+                    }
+                }
+                // If not found in route, advance past current position
+                if (this.currentWaypoint < advRoute.length) {
+                    // Already set above
+                } else {
+                    // Past end of route, no more waypoints
+                }
+            }
             this.directToWaypoint = null;
         } else {
             var dtHdg = (Math.atan2(dtDx, dtDy) * 180 / Math.PI + 360) % 360;
