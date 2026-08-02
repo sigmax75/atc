@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATC - Air Traffic Control</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #0a0a12;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* ===== Title Screen ===== */
+#title-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: radial-gradient(ellipse at center, #0a1a0a 0%, #0a0a12 70%);
+}
+
+#title-screen h1 {
+    font-size: 120px;
+    color: #00ff00;
+    text-shadow: 0 0 30px #00ff00, 0 0 60px #00aa00;
+    letter-spacing: 20px;
+    margin-bottom: 10px;
+}
+
+#title-screen .subtitle {
+    font-size: 18px;
+    color: #00aa00;
+    letter-spacing: 5px;
+    margin-bottom: 60px;
+}
+
+.stage-select {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.stage-select h3 {
+    color: #00cc00;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.stage-btn {
+    background: transparent;
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    padding: 15px 40px;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: block;
+    margin: 8px auto;
+    min-width: 320px;
+}
+
+.stage-btn:hover {
+    background: #003300;
+    box-shadow: 0 0 15px #00ff0044;
+}
+
+.start-btn {
+    background: #003300;
+    border: 2px solid #00ff00;
+    color: #00ff00;
+    padding: 18px 60px;
+    font-family: 'Courier New', monospace;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+}
+
+.start-btn:hover {
+    background: #005500;
+    box-shadow: 0 0 30px #00ff0066;
+}
+
+/* ===== Game Screen ===== */
+#game-screen {
+    display: none;
+    height: 100vh;
+    flex-direction: column;
+}
+
+/* Header */
+#game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0d0d1a;
+    border-bottom: 1px solid #003300;
+    padding: 8px 15px;
+    height: 44px;
+    flex-shrink: 0;
+}
+
+#game-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#game-header .header-left .logo {
+    font-size: 20px;
+    font-weight: bold;
+    color: #00ff00;
+    text-shadow: 0 0 10px #00ff00;
+}
+
+#game-header .stage-name {
+    color: #00cc00;
+    font-size: 13px;
+}
+
+#game-header .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.hud-item {
+    font-size: 13px;
+    color: #00dd00;
+}
+
+.hud-item span {
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.speed-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.speed-btn {
+    background: transparent;
+    border: 1px solid #005500;
+    color: #00aa00;
+    padding: 2px 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.speed-btn.active {
+    background: #003300;
+    border-color: #00ff00;
+    color: #00ff00;
+}
+
+.range-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.range-btn {
+    background: transparent;
+    border: 1px solid #005500;
+    color: #00aa00;
+    padding: 2px 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.range-btn.active {
+    background: #003300;
+    border-color: #00ff00;
+    color: #00ff00;
+}
+
+/* Main area */
+#game-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Radar */
+#radar-container {
+    flex: 1;
+    position: relative;
+    background: #0a0a1a;
+}
+
+#radar-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Flight strips */
+#strip-panel {
+    width: 280px;
+    background: #0d0d18;
+    border-left: 1px solid #003300;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+#strip-panel h3 {
+    padding: 10px;
+    font-size: 13px;
+    color: #00cc00;
+    border-bottom: 1px solid #002200;
+    text-align: center;
+}
+
+.flight-strip {
+    border-bottom: 1px solid #002200;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 12px;
+}
+
+.flight-strip:hover {
+    background: #001a00;
+}
+
+.flight-strip.selected {
+    background: #1a1a00;
+    border-left: 3px solid #ffff00;
+}
+
+.flight-strip.warning {
+    animation: warningBlink 0.5s infinite alternate;
+}
+
+@keyframes warningBlink {
+    from { background: #1a0000; }
+    to { background: #330000; }
+}
+
+.strip-callsign {
+    font-weight: bold;
+    color: #00ff00;
+    font-size: 14px;
+}
+
+.strip-callsign.arrival {
+    color: #00ff00;
+}
+
+.strip-callsign.departure {
+    color: #00ccff;
+}
+
+.strip-type {
+    color: #008800;
+    margin-left: 8px;
+}
+
+.strip-info {
+    color: #00aa00;
+    margin-top: 3px;
+}
+
+.strip-status {
+    color: #888800;
+    margin-top: 2px;
+    font-size: 11px;
+}
+
+/* Command panel */
+#command-panel {
+    display: none;
+    background: #0d0d1a;
+    border-top: 1px solid #003300;
+    padding: 10px 15px;
+    flex-shrink: 0;
+}
+
+#command-panel .cmd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+#command-panel .cmd-callsign {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffff00;
+}
+
+#command-panel .cmd-close {
+    background: transparent;
+    border: 1px solid #550000;
+    color: #ff4444;
+    padding: 2px 10px;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+}
+
+.cmd-controls {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.cmd-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cmd-group label {
+    font-size: 11px;
+    color: #008800;
+}
+
+.cmd-group select, .cmd-group input {
+    background: #0a0a1a;
+    border: 1px solid #005500;
+    color: #00ff00;
+    padding: 5px 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+
+.cmd-group select:focus, .cmd-group input:focus {
+    border-color: #00ff00;
+    outline: none;
+}
+
+.cmd-btn {
+    background: #002200;
+    border: 1px solid #005500;
+    color: #00ff00;
+    padding: 6px 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cmd-btn:hover {
+    background: #004400;
+    border-color: #00ff00;
+}
+
+.cmd-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.cmd-btn.ils-btn {
+    border-color: #005588;
+    color: #00ccff;
+}
+
+.cmd-btn.ils-btn:hover {
+    background: #002244;
+}
+
+.cmd-btn.takeoff-btn {
+    border-color: #885500;
+    color: #ffaa00;
+}
+
+.cmd-btn.takeoff-btn:hover {
+    background: #332200;
+}
+
+.cmd-btn.hold-btn {
+    border-color: #880088;
+    color: #ff44ff;
+}
+
+.cmd-btn.hold-btn:hover {
+    background: #220022;
+}
+
+/* Result screen */
+#result-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#result-overlay h2 {
+    font-size: 48px;
+    color: #00ff00;
+    text-shadow: 0 0 20px #00ff00;
+    margin-bottom: 30px;
+}
+
+#result-overlay.failed h2 {
+    color: #ff4444;
+    text-shadow: 0 0 20px #ff0000;
+}
+
+.result-stats {
+    font-size: 16px;
+    color: #00cc00;
+    margin-bottom: 5px;
+}
+
+.result-stats span {
+    color: #ffffff;
+}
+
+#result-overlay .start-btn {
+    margin-top: 40px;
+}
+
+/* Messages log */
+#message-log {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    width: 350px;
+    max-height: 120px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.msg-line {
+    font-size: 11px;
+    color: #00aa00;
+    padding: 2px 0;
+    opacity: 1;
+    transition: opacity 1s;
+}
+
+.msg-line.warn {
+    color: #ff4444;
+}
+
+.msg-line.info {
+    color: #00ccff;
+}
+
+.msg-line.success {
+    color: #00ff00;
+}
+
+.cmd-btn-row {
+    display: flex;
+    gap: 4px;
+}
+
+.title-return-btn {
+    margin-top: 10px;
+    font-size: 16px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a12; }
+::-webkit-scrollbar-thumb { background: #003300; }
+</style>
+</head>
+<body>
+
+<!-- Title Screen -->
+<div id="title-screen">
+    <h1>ATC</h1>
+    <div class="subtitle">AIR TRAFFIC CONTROL SIMULATOR</div>
+    <div class="stage-select">
+        <h3>- STAGE SELECT -</h3>
+        <button class="stage-btn" id="btn-stage1">Stage 1: RJFK 鹿児島空港 (入門)</button>
+    </div>
+    <button class="start-btn" id="btn-start">START</button>
+</div>
+
+<!-- Game Screen -->
+<div id="game-screen">
+    <div id="game-header">
+        <div class="header-left">
+            <div class="logo">ATC</div>
+            <div class="stage-name" id="hud-stage">RJFK Kagoshima</div>
+        </div>
+        <div class="header-right">
+            <div class="hud-item">SCORE: <span id="hud-score">0</span></div>
+            <div class="hud-item">TIME: <span id="hud-time">10:00</span></div>
+            <div class="hud-item">
+                <span class="range-btns">
+                    <button class="range-btn" data-range="10">10nm</button>
+                    <button class="range-btn active" data-range="20">20nm</button>
+                    <button class="range-btn" data-range="40">40nm</button>
+                </span>
+            </div>
+            <div class="hud-item">
+                <span class="speed-btns">
+                    <button class="speed-btn active" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="2">2x</button>
+                    <button class="speed-btn" data-speed="4">4x</button>
+                </span>
+            </div>
+        </div>
+    </div>
+    <div id="game-main">
+        <div id="radar-container">
+            <canvas id="radar-canvas"></canvas>
+            <div id="message-log"></div>
+        </div>
+        <div id="strip-panel">
+            <h3>FLIGHT STRIPS</h3>
+            <div id="strip-list"></div>
+        </div>
+    </div>
+    <div id="command-panel">
+        <div class="cmd-header">
+            <div class="cmd-callsign" id="cmd-callsign">---</div>
+            <button class="cmd-close" id="cmd-close">CLOSE</button>
+        </div>
+        <div class="cmd-controls">
+            <div class="cmd-group">
+                <label>高度 (×100ft)</label>
+                <select id="cmd-alt"></select>
+            </div>
+            <div class="cmd-group">
+                <label>方位</label>
+                <select id="cmd-hdg"></select>
+            </div>
+            <div class="cmd-group">
+                <label>Direct to</label>
+                <select id="cmd-waypoint"><option value="">---</option></select>
+            </div>
+            <div class="cmd-group">
+                <label>速度</label>
+                <div class="cmd-btn-row">
+                    <button class="cmd-btn" id="cmd-spd-slow">減速</button>
+                    <button class="cmd-btn" id="cmd-spd-norm">標準</button>
+                    <button class="cmd-btn" id="cmd-spd-fast">加速</button>
+                </div>
+            </div>
+            <div class="cmd-group">
+                <label>管制指示</label>
+                <div class="cmd-btn-row">
+                    <button class="cmd-btn ils-btn" id="cmd-ils" disabled>TWRハンドオフ</button>
+                    <button class="cmd-btn contact-btn" id="cmd-contact" disabled>コンタクト</button>
+                    <button class="cmd-btn hold-btn" id="cmd-hold">ホールド</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Result Overlay -->
+<div id="result-overlay">
+    <h2 id="result-title">STAGE CLEAR</h2>
+    <div class="result-stats">着陸: <span id="res-landed">0</span> 機</div>
+    <div class="result-stats">離陸: <span id="res-departed">0</span> 機</div>
+    <div class="result-stats">ニアミス: <span id="res-conflicts">0</span> 回</div>
+    <div class="result-stats">スコア: <span id="res-score">0</span></div>
+    <button class="start-btn" id="btn-retry">RETRY</button>
+    <button class="start-btn title-return-btn" id="btn-title">TITLE</button>
+</div>
+
+<script>
+// ===== Audio =====
+var AudioCtx = window.AudioContext || window.webkitAudioContext;
+var audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) audioCtx = new AudioCtx();
+}
+
+function playClick() {
+    if (!audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+}
+
+function playWarning() {
+    if (!audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.value = 600;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.5);
+    // second beep
+    var osc2 = audioCtx.createOscillator();
+    var gain2 = audioCtx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.type = 'square';
+    osc2.frequency.value = 800;
+    gain2.gain.setValueAtTime(0, audioCtx.currentTime + 0.2);
+    gain2.gain.setValueAtTime(0.15, audioCtx.currentTime + 0.25);
+    gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+    osc2.start(audioCtx.currentTime + 0.25);
+    osc2.stop(audioCtx.currentTime + 0.6);
+}
+
+function playLanding() {
+    if (!audioCtx) return;
+    var t = audioCtx.currentTime;
+    [523, 659, 784].forEach(function(freq, i) {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.08, t + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.3);
+        osc.start(t + i * 0.12);
+        osc.stop(t + i * 0.12 + 0.3);
+    });
+}
+
+function playTakeoff() {
+    if (!audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.4);
+    gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.5);
+}
+
+// ===== Airport Data =====
+var RJFK = {
+    name: 'Kagoshima',
+    icao: 'RJFK',
+    elevation: 906,
+    runways: [
+        {
+            id: '34', heading: 340, length: 3000, lat: 0, lon: 0,
+            ils: true,
+            threshold: { x: -0.51, y: 1.41 },
+            end: { x: 0.51, y: -1.41 }
+        }
+    ],
+    stars: [
+        {
+            name: 'KAGOSHIMA SOUTH', waypoints: [
+                { name: 'NANPO', x: 0, y: -20, alt: 6000 },
+                { name: 'KAGOS', x: -5, y: -10, alt: 4000 },
+                { name: 'FINAL', x: 0, y: -5, alt: 2500 }
+            ]
+        },
+        {
+            name: 'KAGOSHIMA NORTH', waypoints: [
+                { name: 'KIRIS', x: 5, y: 20, alt: 6000 },
+                { name: 'SAKUR', x: 3, y: 10, alt: 4000 },
+                { name: 'FINAL', x: 0, y: 5, alt: 2500 }
+            ]
+        }
+    ],
+    sids: [
+        {
+            name: 'KAGOSHIMA DEP', waypoints: [
+                { name: 'RWY34', x: -0.51, y: 1.41, alt: 500 },
+                { name: 'DER', x: -1.5, y: 4, alt: 1500 },
+                { name: 'TURNH', x: -8, y: -8, alt: 5000 },
+                { name: 'CLIMB', x: -15, y: -15, alt: 10000 }
+            ]
+        }
+    ]
+};
+
+// ===== Aircraft Types =====
+var AIRCRAFT_TYPES = {
+    'B777': { category: 'H', name: 'Boeing 777', speed: { min: 140, cruise: 250, max: 300 }, climbRate: 2000, descendRate: 1500, turnRate: 2.5, separation: 6 },
+    'A350': { category: 'H', name: 'Airbus A350', speed: { min: 135, cruise: 250, max: 300 }, climbRate: 2000, descendRate: 1500, turnRate: 2.5, separation: 6 },
+    'B737': { category: 'M', name: 'Boeing 737', speed: { min: 130, cruise: 230, max: 280 }, climbRate: 2500, descendRate: 2000, turnRate: 3, separation: 5 },
+    'A320': { category: 'M', name: 'Airbus A320', speed: { min: 125, cruise: 230, max: 280 }, climbRate: 2500, descendRate: 2000, turnRate: 3, separation: 5 },
+    'E170': { category: 'S', name: 'Embraer 170', speed: { min: 115, cruise: 210, max: 260 }, climbRate: 3000, descendRate: 2500, turnRate: 4, separation: 3 },
+    'CRJ7': { category: 'S', name: 'CRJ-700', speed: { min: 120, cruise: 220, max: 270 }, climbRate: 2800, descendRate: 2300, turnRate: 3.5, separation: 3 },
+    'B763': { category: 'H', name: 'Boeing 767', speed: { min: 135, cruise: 240, max: 290 }, climbRate: 1800, descendRate: 1500, turnRate: 2.5, separation: 6 }
+};
+
+// ===== Aircraft Class =====
+function Aircraft(callsign, type, role, entry) {
+    this.callsign = callsign;
+    this.type = type;
+    this.typeDef = AIRCRAFT_TYPES[type];
+    this.role = role;
+    this.x = entry.x;
+    this.y = entry.y;
+    this.altitude = entry.alt;
+    this.heading = entry.heading;
+    this.speed = entry.speed || (role === 'departure' ? 0 : this.typeDef.speed.cruise);
+    this.targetAlt = this.altitude;
+    this.targetHeading = this.heading;
+    this.targetSpeed = this.speed;
+    this.status = role === 'departure' ? 'ready' : 'enroute';
+    this.ilsCleared = false;
+    this.clearedTakeoff = false;
+    this.starName = null;
+    this.sidName = null;
+    this.directToWaypoint = null;
+    this.currentWaypoint = 0;
+    this.holding = false;
+    this.handedOff = false;
+    this.contacted = false;
+    this.autoTakeoffTimer = 0;
+    this.holdHeading = 0;
+    this.trail = [];
+    this.selected = false;
+    this.warning = false;
+    this.conflict = false;
+    this.fuel = 100;
+    this.trailTimer = 0;
+    this.landed = false;
+    this.departed = false;
+    this.goAround = false;
+    this.takeoffRoll = false;
+    this.takeoffTimer = 0;
+}
+
+Aircraft.prototype.update = function(dt) {
+    if (this.landed || this.departed) return;
+
+    // Departure: auto takeoff by tower (check runway clear)
+    if (this.status === 'ready') {
+        this.autoTakeoffTimer += dt;
+        // Tower waits a few seconds, then checks runway clear
+        if (this.autoTakeoffTimer >= 5) {
+            var rwy = game.airport.runways[0];
+            var runwayClear = true;
+            game.aircraft.forEach(function(other) {
+                if (other === this) return;
+                if (other.landed || other.departed) return;
+                var odx = other.x - rwy.threshold.x;
+                var ody = other.y - rwy.threshold.y;
+                var odist = Math.sqrt(odx * odx + ody * ody);
+                if (odist < 3 && other.altitude < 1000) runwayClear = false;
+                if (other.ilsCleared && odist < 5 && other.altitude < 3000) runwayClear = false;
+            }.bind(this));
+            if (runwayClear) {
+                this.takeoffRoll = true;
+                this.status = 'takeoff';
+                this.heading = rwy.heading;
+                this.targetHeading = this.heading;
+                addMessage('[TWR] ' + this.callsign + ' RWY' + rwy.id + ' 離陸許可', 'info');
+            }
+        }
+        return;
+    }
+
+    // Takeoff roll
+    if (this.status === 'takeoff') {
+        this.takeoffTimer += dt;
+        this.speed += 80 * dt;
+        var rwy = game.airport.runways[0];
+        var rad = (rwy.heading - 90) * Math.PI / 180;
+        var distNm = (this.speed / 3600) * dt;
+        this.x += Math.cos(rad) * distNm;
+        this.y -= Math.sin(rad) * distNm;
+        if (this.speed >= this.typeDef.speed.min + 20) {
+            this.status = 'departing';
+            this.targetAlt = 3000;
+            this.targetSpeed = this.typeDef.speed.cruise;
+            this.altitude = 100;
+            addMessage('[TWR] ' + this.callsign + ' アプローチへコンタクト', 'info');
+        }
+        return;
+    }
+
+    if (this.status === 'departing') {
+        if (this.altitude >= 10000) {
+            this.departed = true;
+            this.status = 'departed';
+            playTakeoff();
+            addMessage(this.callsign + ' 空域離脱 - 出発完了', 'success');
+            game.score += 80;
+            game.departedCount++;
+            return;
+        }
+    }
+
+    // Direct to waypoint (player instruction)
+    if (!this.holding && !this.ilsCleared && this.directToWaypoint) {
+        var dtWp = this.directToWaypoint;
+        var dtDx = dtWp.x - this.x;
+        var dtDy = dtWp.y - this.y;
+        var dtDist = Math.sqrt(dtDx * dtDx + dtDy * dtDy);
+        if (dtDist < 1.5) {
+            addMessage(this.callsign + ' ' + dtWp.name + ' 通過', 'info');
+            this.directToWaypoint = null;
+        } else {
+            var dtHdg = (Math.atan2(dtDx, dtDy) * 180 / Math.PI + 360) % 360;
+            this.targetHeading = dtHdg;
+            if (dtWp.alt && dtWp.alt < this.altitude) {
+                this.targetAlt = dtWp.alt;
+            }
+        }
+    }
+
+    // STAR/SID waypoint following
+    if (!this.holding && !this.ilsCleared && !this.directToWaypoint && this.starName && this.status === 'enroute') {
+        var star = null;
+        for (var si = 0; si < game.airport.stars.length; si++) {
+            if (game.airport.stars[si].name === this.starName) { star = game.airport.stars[si]; break; }
+        }
+        if (star && this.currentWaypoint < star.waypoints.length) {
+            var wp = star.waypoints[this.currentWaypoint];
+            var wpDx = wp.x - this.x;
+            var wpDy = wp.y - this.y;
+            var wpDist = Math.sqrt(wpDx * wpDx + wpDy * wpDy);
+            if (wpDist < 1.5) {
+                this.currentWaypoint++;
+                if (this.currentWaypoint < star.waypoints.length) {
+                    var nextWp = star.waypoints[this.currentWaypoint];
+                    this.targetAlt = nextWp.alt;
+                }
+            } else {
+                var wpHdg = (Math.atan2(wpDx, wpDy) * 180 / Math.PI + 360) % 360;
+                this.targetHeading = wpHdg;
+                if (wp.alt && wp.alt < this.altitude) {
+                    this.targetAlt = wp.alt;
+                }
+            }
+        }
+    }
+
+    if (!this.holding && !this.ilsCleared && !this.directToWaypoint && this.sidName && this.status === 'departing') {
+        var sid = null;
+        for (var di = 0; di < game.airport.sids.length; di++) {
+            if (game.airport.sids[di].name === this.sidName) { sid = game.airport.sids[di]; break; }
+        }
+        if (sid && this.currentWaypoint < sid.waypoints.length) {
+            var swp = sid.waypoints[this.currentWaypoint];
+            var swpDx = swp.x - this.x;
+            var swpDy = swp.y - this.y;
+            var swpDist = Math.sqrt(swpDx * swpDx + swpDy * swpDy);
+            if (swpDist < 1.5) {
+                this.currentWaypoint++;
+                if (this.currentWaypoint < sid.waypoints.length) {
+                    var nextSwp = sid.waypoints[this.currentWaypoint];
+                    this.targetAlt = nextSwp.alt;
+                }
+            } else {
+                var swpHdg = (Math.atan2(swpDx, swpDy) * 180 / Math.PI + 360) % 360;
+                this.targetHeading = swpHdg;
+            }
+        }
+    }
+
+    // Holding pattern - continuous right turn
+    if (this.holding) {
+        this.targetHeading = (this.heading + 90) % 360;
+    }
+
+    // ILS approach - intercept localizer from correct side
+    if (this.ilsCleared && this.status !== 'landing') {
+        var rwy = game.airport.runways[0];
+        var rwyHdg = rwy.heading;
+        // ILS approach direction is opposite of runway heading
+        var appHdg = (rwyHdg + 180) % 360;
+        var appRad = appHdg * Math.PI / 180;
+
+        // Distance to threshold
+        var dx = rwy.threshold.x - this.x;
+        var dy = rwy.threshold.y - this.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0.3) {
+            // Project aircraft position onto localizer centerline
+            // Localizer extends from threshold in approach direction (opposite of rwy heading)
+            var locDirX = Math.sin(rwyHdg * Math.PI / 180);
+            var locDirY = Math.cos(rwyHdg * Math.PI / 180);
+
+            // Vector from threshold to aircraft
+            var taxf = this.x - rwy.threshold.x;
+            var tayf = this.y - rwy.threshold.y;
+
+            // Cross track error (positive = right of centerline)
+            var crossTrack = taxf * locDirY - tayf * locDirX;
+
+            // Along track (negative = before threshold on approach side)
+            var alongTrack = taxf * locDirX + tayf * locDirY;
+
+            if (dist > 5) {
+                // Far out: head toward a point on the localizer 5nm before threshold
+                var interceptX = rwy.threshold.x - locDirX * 5;
+                var interceptY = rwy.threshold.y - locDirY * 5;
+                var intDx = interceptX - this.x;
+                var intDy = interceptY - this.y;
+                this.targetHeading = (Math.atan2(intDx, intDy) * 180 / Math.PI + 360) % 360;
+            } else {
+                // Close: fly runway heading with cross-track correction
+                var correction = Math.atan2(crossTrack, dist) * 180 / Math.PI;
+                correction = Math.max(-30, Math.min(30, correction * 2));
+                this.targetHeading = (rwyHdg + correction + 360) % 360;
+            }
+
+            // Glideslope: 3 degree descent (300ft per nm)
+            var targetAlt = Math.max(0, dist * 300 + game.airport.elevation);
+            if (targetAlt < this.altitude) {
+                this.targetAlt = targetAlt;
+            }
+            // Slow down on approach
+            if (dist < 8) {
+                this.targetSpeed = this.typeDef.speed.min + 15;
+            }
+            this.status = 'approach';
+        }
+
+        // Landing check
+        if (dist < 0.5 && this.altitude < game.airport.elevation + 300) {
+            var hdgDiff = Math.abs(((this.heading - rwyHdg + 540) % 360) - 180);
+            if (hdgDiff < 30) {
+                this.status = 'landing';
+                this.landed = true;
+                playLanding();
+                addMessage(this.callsign + ' 着陸成功!', 'success');
+                game.score += 100;
+                game.landedCount++;
+                return;
+            }
+        }
+    }
+
+    // Heading change
+    if (Math.abs(((this.targetHeading - this.heading + 540) % 360) - 180) > 0.5) {
+        var diff = ((this.targetHeading - this.heading + 540) % 360) - 180;
+        var maxTurn = this.typeDef.turnRate * dt;
+        if (Math.abs(diff) <= maxTurn) {
+            this.heading = this.targetHeading;
+        } else {
+            this.heading += (diff > 0 ? maxTurn : -maxTurn);
+        }
+        this.heading = ((this.heading % 360) + 360) % 360;
+    }
+
+    // Altitude change
+    if (Math.abs(this.altitude - this.targetAlt) > 10) {
+        var altDiff = this.targetAlt - this.altitude;
+        var rate = altDiff > 0 ? this.typeDef.climbRate : -this.typeDef.descendRate;
+        var altChange = rate * dt / 60;
+        if (Math.abs(altDiff) <= Math.abs(altChange)) {
+            this.altitude = this.targetAlt;
+        } else {
+            this.altitude += altChange;
+        }
+    }
+
+    // Speed change
+    if (Math.abs(this.speed - this.targetSpeed) > 1) {
+        var spdDiff = this.targetSpeed - this.speed;
+        var spdChange = 5 * dt;
+        if (Math.abs(spdDiff) <= spdChange) {
+            this.speed = this.targetSpeed;
+        } else {
+            this.speed += (spdDiff > 0 ? spdChange : -spdChange);
+        }
+    }
+
+    // Position update
+    var rad = (this.heading - 90) * Math.PI / 180;
+    var distNm = (this.speed / 3600) * dt;
+    this.x += Math.cos(rad) * distNm;
+    this.y -= Math.sin(rad) * distNm;
+
+    // Trail (every ~4 seconds game time)
+    this.trailTimer += dt;
+    if (this.trailTimer >= 4) {
+        this.trailTimer = 0;
+        this.trail.push({ x: this.x, y: this.y, t: Date.now() });
+        if (this.trail.length > 4) this.trail.shift();
+    }
+
+    // Fuel
+    this.fuel -= 0.005 * dt;
+    if (this.fuel < 0) this.fuel = 0;
+
+    // Out of range check
+    var centerDist = Math.sqrt(this.x * this.x + this.y * this.y);
+    if (centerDist > 45 && this.role === 'arrival' && !this.departed) {
+        addMessage(this.callsign + ' 管制空域離脱 (ダイバート)', 'warn');
+        this.departed = true;
+        this.status = 'diverted';
+        game.score -= 100;
+    }
+};
+
+// ===== Scenario =====
+var SCENARIO_RJFK = {
+    name: 'RJFK Kagoshima - Introduction',
+    airport: RJFK,
+    timeLimit: 600,
+    waves: [
+        {
+            time: 0, aircraft: [
+                { callsign: 'JAL601', type: 'B737', role: 'arrival', entry: { x: 0, y: -20, alt: 6000, heading: 0, speed: 230 }, star: 'KAGOSHIMA SOUTH' },
+                { callsign: 'ANA322', type: 'A320', role: 'arrival', entry: { x: 10, y: -15, alt: 5000, heading: 330, speed: 220 }, star: 'KAGOSHIMA SOUTH' }
+            ]
+        },
+        {
+            time: 60, aircraft: [
+                { callsign: 'SKY812', type: 'B737', role: 'departure', entry: { x: 0.51, y: -1.41, alt: 0, heading: 340, speed: 0 } }
+            ]
+        },
+        {
+            time: 120, aircraft: [
+                { callsign: 'SNA045', type: 'E170', role: 'arrival', entry: { x: -12, y: -18, alt: 7000, heading: 20, speed: 210 }, star: 'KAGOSHIMA SOUTH' },
+                { callsign: 'JAL604', type: 'B777', role: 'arrival', entry: { x: 5, y: 20, alt: 8000, heading: 200, speed: 250 }, star: 'KAGOSHIMA NORTH' }
+            ]
+        },
+        {
+            time: 240, aircraft: [
+                { callsign: 'ANA660', type: 'A320', role: 'departure', entry: { x: 0.51, y: -1.41, alt: 0, heading: 340, speed: 0 } }
+            ]
+        }
+    ]
+};
+
+// ===== Game State =====
+var game = {
+    state: 'title',
+    aircraft: [],
+    airport: null,
+    scenario: null,
+    selectedAC: null,
+    score: 0,
+    time: 0,
+    timeLimit: 600,
+    timeSpeed: 1,
+    range: 20,
+    sweepAngle: 0,
+    lastTime: 0,
+    landedCount: 0,
+    departedCount: 0,
+    conflictCount: 0,
+    totalArrivals: 0,
+    totalDepartures: 0,
+    waveIndex: 0,
+    warningPlayed: {},
+    messages: [],
+    paused: false
+};
+
+// ===== DOM References =====
+var canvas, ctx;
+var titleScreen, gameScreen, resultOverlay;
+var hudScore, hudTime, hudStage;
+var cmdPanel, cmdCallsign, cmdAlt, cmdHdg, cmdWaypoint;
+var cmdIls, cmdTakeoff, cmdHold;
+var stripList;
+
+function initDOM() {
+    canvas = document.getElementById('radar-canvas');
+    ctx = canvas.getContext('2d');
+    titleScreen = document.getElementById('title-screen');
+    gameScreen = document.getElementById('game-screen');
+    resultOverlay = document.getElementById('result-overlay');
+    hudScore = document.getElementById('hud-score');
+    hudTime = document.getElementById('hud-time');
+    hudStage = document.getElementById('hud-stage');
+    cmdPanel = document.getElementById('command-panel');
+    cmdCallsign = document.getElementById('cmd-callsign');
+    cmdAlt = document.getElementById('cmd-alt');
+    cmdHdg = document.getElementById('cmd-hdg');
+    cmdIls = document.getElementById('cmd-ils');
+    cmdTakeoff = document.getElementById('cmd-takeoff');
+    cmdHold = document.getElementById('cmd-hold');
+    cmdWaypoint = document.getElementById('cmd-waypoint');
+    stripList = document.getElementById('strip-list');
+
+    // Populate alt dropdown
+    for (var a = 2; a <= 200; a += 2) {
+        var opt = document.createElement('option');
+        opt.value = a * 100;
+        if (a < 10) {
+            opt.textContent = (a * 100) + 'ft';
+        } else {
+            opt.textContent = 'FL' + String(a).padStart(3, '0');
+        }
+        cmdAlt.appendChild(opt);
+    }
+
+    // Populate hdg dropdown
+    for (var h = 10; h <= 360; h += 10) {
+        var opt = document.createElement('option');
+        opt.value = h % 360 || 360;
+        opt.textContent = String(h).padStart(3, '0') + '°';
+        cmdHdg.appendChild(opt);
+    }
+
+    // Event listeners
+    document.getElementById('btn-start').addEventListener('click', startGame);
+    document.getElementById('btn-stage1').addEventListener('click', function() { playClick(); });
+    document.getElementById('cmd-close').addEventListener('click', closeCommand);
+    document.getElementById('btn-retry').addEventListener('click', startGame);
+    document.getElementById('btn-title').addEventListener('click', goTitle);
+
+    cmdAlt.addEventListener('change', function() {
+        if (!game.selectedAC) return;
+        game.selectedAC.targetAlt = parseInt(cmdAlt.value);
+        playClick();
+        addMessage(game.selectedAC.callsign + ' 高度 ' + formatAlt(game.selectedAC.targetAlt) + ' に変更', 'info');
+    });
+
+    cmdHdg.addEventListener('change', function() {
+        if (!game.selectedAC) return;
+        game.selectedAC.targetHeading = parseInt(cmdHdg.value);
+        game.selectedAC.holding = false;
+        game.selectedAC.directToWaypoint = null;
+        playClick();
+        addMessage(game.selectedAC.callsign + ' 方位 ' + String(parseInt(cmdHdg.value)).padStart(3, '0') + '° に変更', 'info');
+    });
+
+    cmdWaypoint.addEventListener('change', function() {
+        if (!game.selectedAC || !cmdWaypoint.value) return;
+        var wpName = cmdWaypoint.value;
+        var wp = findWaypoint(wpName);
+        if (wp) {
+            game.selectedAC.directToWaypoint = { name: wpName, x: wp.x, y: wp.y, alt: wp.alt };
+            game.selectedAC.holding = false;
+            playClick();
+            addMessage(game.selectedAC.callsign + ' Direct to ' + wpName, 'info');
+        }
+    });
+
+    document.getElementById('cmd-spd-slow').addEventListener('click', function() {
+        if (!game.selectedAC) return;
+        game.selectedAC.targetSpeed = game.selectedAC.typeDef.speed.min + 15;
+        playClick();
+        addMessage(game.selectedAC.callsign + ' 減速指示', 'info');
+    });
+    document.getElementById('cmd-spd-norm').addEventListener('click', function() {
+        if (!game.selectedAC) return;
+        game.selectedAC.targetSpeed = game.selectedAC.typeDef.speed.cruise;
+        playClick();
+        addMessage(game.selectedAC.callsign + ' 標準速度', 'info');
+    });
+    document.getElementById('cmd-spd-fast').addEventListener('click', function() {
+        if (!game.selectedAC) return;
+        game.selectedAC.targetSpeed = game.selectedAC.typeDef.speed.max;
+        playClick();
+        addMessage(game.selectedAC.callsign + ' 加速指示', 'info');
+    });
+
+    cmdIls.addEventListener('click', function() {
+        if (!game.selectedAC || game.selectedAC.role !== 'arrival') return;
+        game.selectedAC.ilsCleared = true;
+        game.selectedAC.holding = false;
+        game.selectedAC.handedOff = true;
+        playClick();
+        addMessage(game.selectedAC.callsign + ' タワーへハンドオフ - ILS RWY' + game.airport.runways[0].id, 'info');
+        updateCommandPanel();
+    });
+
+    var cmdContact = document.getElementById('cmd-contact');
+    cmdContact.addEventListener('click', function() {
+        if (!game.selectedAC || game.selectedAC.role !== 'departure') return;
+        if (game.selectedAC.status !== 'departing') return;
+        game.selectedAC.contacted = true;
+        playClick();
+        addMessage(game.selectedAC.callsign + ' レーダーコンタクト - 上昇指示可', 'info');
+        updateCommandPanel();
+    });
+
+    cmdHold.addEventListener('click', function() {
+        if (!game.selectedAC) return;
+        game.selectedAC.holding = !game.selectedAC.holding;
+        game.selectedAC.ilsCleared = false;
+        playClick();
+        if (game.selectedAC.holding) {
+            addMessage(game.selectedAC.callsign + ' ホールディング開始', 'info');
+        } else {
+            addMessage(game.selectedAC.callsign + ' ホールディング解除', 'info');
+        }
+        updateCommandPanel();
+    });
+
+    // Speed buttons
+    document.querySelectorAll('.speed-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            game.timeSpeed = parseInt(btn.dataset.speed);
+            document.querySelectorAll('.speed-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            playClick();
+        });
+    });
+
+    // Range buttons
+    document.querySelectorAll('.range-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            game.range = parseInt(btn.dataset.range);
+            document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            playClick();
+        });
+    });
+
+    // Canvas click
+    canvas.addEventListener('click', onCanvasClick);
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+}
+
+function resizeCanvas() {
+    var container = document.getElementById('radar-container');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+}
+
+// ===== Game Flow =====
+function startGame() {
+    initAudio();
+    playClick();
+    game.state = 'playing';
+    game.aircraft = [];
+    game.selectedAC = null;
+    game.score = 0;
+    game.time = 0;
+    game.timeSpeed = 1;
+    game.range = 20;
+    game.sweepAngle = 0;
+    game.lastTime = performance.now();
+    game.landedCount = 0;
+    game.departedCount = 0;
+    game.conflictCount = 0;
+    game.waveIndex = 0;
+    game.warningPlayed = {};
+    game.messages = [];
+    game.scenario = SCENARIO_RJFK;
+    game.airport = SCENARIO_RJFK.airport;
+    game.timeLimit = SCENARIO_RJFK.timeLimit;
+
+    // Count totals
+    game.totalArrivals = 0;
+    game.totalDepartures = 0;
+    SCENARIO_RJFK.waves.forEach(function(w) {
+        w.aircraft.forEach(function(a) {
+            if (a.role === 'arrival') game.totalArrivals++;
+            else game.totalDepartures++;
+        });
+    });
+
+    document.querySelectorAll('.speed-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelector('.speed-btn[data-speed="1"]').classList.add('active');
+    document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelector('.range-btn[data-range="20"]').classList.add('active');
+
+    titleScreen.style.display = 'none';
+    gameScreen.style.display = 'flex';
+    resultOverlay.style.display = 'none';
+    cmdPanel.style.display = 'none';
+    hudStage.textContent = game.scenario.name;
+
+    resizeCanvas();
+    addMessage('管制開始 - RJFK鹿児島空港', 'success');
+
+    requestAnimationFrame(gameLoop);
+}
+
+function goTitle() {
+    playClick();
+    game.state = 'title';
+    titleScreen.style.display = 'flex';
+    gameScreen.style.display = 'none';
+    resultOverlay.style.display = 'none';
+}
+
+function showResult(cleared) {
+    game.state = 'result';
+    resultOverlay.style.display = 'flex';
+    var title = document.getElementById('result-title');
+    if (cleared) {
+        title.textContent = 'STAGE CLEAR';
+        resultOverlay.classList.remove('failed');
+    } else {
+        title.textContent = 'STAGE FAILED';
+        resultOverlay.classList.add('failed');
+    }
+    document.getElementById('res-landed').textContent = game.landedCount;
+    document.getElementById('res-departed').textContent = game.departedCount;
+    document.getElementById('res-conflicts').textContent = game.conflictCount;
+    document.getElementById('res-score').textContent = game.score;
+}
+
+// ===== Message Log =====
+function addMessage(text, type) {
+    type = type || '';
+    game.messages.push({ text: text, type: type, time: game.time });
+    if (game.messages.length > 8) game.messages.shift();
+    renderMessages();
+}
+
+function renderMessages() {
+    var log = document.getElementById('message-log');
+    log.innerHTML = '';
+    game.messages.forEach(function(m) {
+        var div = document.createElement('div');
+        div.className = 'msg-line ' + m.type;
+        div.textContent = formatTime(m.time) + ' ' + m.text;
+        log.appendChild(div);
+    });
+}
+
+// ===== Helpers =====
+function formatTime(sec) {
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function findWaypoint(name) {
+    var all = [];
+    game.airport.stars.forEach(function(s) { all = all.concat(s.waypoints); });
+    game.airport.sids.forEach(function(s) { all = all.concat(s.waypoints); });
+    for (var i = 0; i < all.length; i++) {
+        if (all[i].name === name) return all[i];
+    }
+    return null;
+}
+
+function formatAlt(alt) {
+    if (alt >= 1000) {
+        var fl = Math.round(alt / 100);
+        return 'FL' + String(fl).padStart(3, '0');
+    }
+    return alt + 'ft';
+}
+
+// ===== Canvas Click =====
+function onCanvasClick(e) {
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var my = e.clientY - rect.top;
+
+    var cx = canvas.width / 2;
+    var cy = canvas.height / 2;
+    var scale = Math.min(canvas.width, canvas.height) / (game.range * 2.2);
+
+    var clicked = null;
+    game.aircraft.forEach(function(ac) {
+        if (ac.landed || ac.departed) return;
+        var sx = cx + ac.x * scale;
+        var sy = cy - ac.y * scale;
+        var dx = mx - sx;
+        var dy = my - sy;
+        if (Math.sqrt(dx * dx + dy * dy) < 20) {
+            clicked = ac;
+        }
+    });
+
+    if (clicked) {
+        selectAircraft(clicked);
+    } else {
+        deselectAll();
+    }
+}
+
+function selectAircraft(ac) {
+    deselectAll();
+    ac.selected = true;
+    game.selectedAC = ac;
+    playClick();
+    showCommand(ac);
+    updateStrips();
+}
+
+function deselectAll() {
+    game.aircraft.forEach(function(ac) { ac.selected = false; });
+    game.selectedAC = null;
+    cmdPanel.style.display = 'none';
+    updateStrips();
+}
+
+function showCommand(ac) {
+    cmdPanel.style.display = 'block';
+    cmdCallsign.textContent = ac.callsign + ' (' + ac.type + ')';
+
+    // Set current values
+    cmdAlt.value = Math.round(ac.targetAlt / 200) * 200;
+    var hdgRounded = Math.round(ac.targetHeading / 10) * 10;
+    if (hdgRounded === 0) hdgRounded = 360;
+    cmdHdg.value = hdgRounded;
+
+    // Populate waypoint dropdown
+    cmdWaypoint.innerHTML = '<option value="">---</option>';
+    var wpSet = {};
+    game.airport.stars.forEach(function(s) {
+        s.waypoints.forEach(function(wp) {
+            if (!wpSet[wp.name]) {
+                wpSet[wp.name] = true;
+                var opt = document.createElement('option');
+                opt.value = wp.name;
+                opt.textContent = wp.name;
+                cmdWaypoint.appendChild(opt);
+            }
+        });
+    });
+    game.airport.sids.forEach(function(s) {
+        s.waypoints.forEach(function(wp) {
+            if (!wpSet[wp.name]) {
+                wpSet[wp.name] = true;
+                var opt = document.createElement('option');
+                opt.value = wp.name;
+                opt.textContent = wp.name;
+                cmdWaypoint.appendChild(opt);
+            }
+        });
+    });
+    if (ac.directToWaypoint) {
+        cmdWaypoint.value = ac.directToWaypoint.name;
+    }
+
+    updateCommandPanel();
+}
+
+function updateCommandPanel() {
+    var ac = game.selectedAC;
+    if (!ac) return;
+
+    // ILS button
+    if (ac.role === 'arrival' && !ac.ilsCleared) {
+        cmdIls.disabled = false;
+    } else {
+        cmdIls.disabled = true;
+    }
+
+    // Contact button - available when departing and not yet contacted
+    var cmdContact = document.getElementById('cmd-contact');
+    if (ac.role === 'departure' && ac.status === 'departing' && !ac.contacted) {
+        cmdContact.disabled = false;
+    } else {
+        cmdContact.disabled = true;
+    }
+
+    // Hold button text
+    if (ac.holding) {
+        cmdHold.textContent = 'ホールド解除';
+    } else {
+        cmdHold.textContent = 'ホールド';
+    }
+}
+
+function closeCommand() {
+    deselectAll();
+    playClick();
+}
+
+// ===== Flight Strips =====
+function updateStrips() {
+    stripList.innerHTML = '';
+    game.aircraft.forEach(function(ac) {
+        if (ac.landed || ac.departed) return;
+        var div = document.createElement('div');
+        div.className = 'flight-strip';
+        if (ac.selected) div.className += ' selected';
+        if (ac.conflict) div.className += ' warning';
+
+        var statusText = '';
+        switch (ac.status) {
+            case 'enroute': statusText = '巡航中'; break;
+            case 'approach': statusText = 'アプローチ'; break;
+            case 'final': statusText = 'ファイナル'; break;
+            case 'ready': statusText = '離陸待機'; break;
+            case 'takeoff': statusText = '離陸滑走中'; break;
+            case 'departing': statusText = '上昇中'; break;
+            case 'landing': statusText = '着陸'; break;
+            default: statusText = ac.status;
+        }
+        if (ac.holding) statusText = 'ホールディング';
+        if (ac.handedOff) statusText = 'TWRハンドオフ済';
+        if (ac.status === 'departing' && !ac.contacted) statusText = 'コンタクト待ち';
+        if (ac.status === 'departing' && ac.contacted) statusText = '上昇中（管制中）';
+
+        var roleClass = ac.role === 'arrival' ? 'arrival' : 'departure';
+        var roleLabel = ac.role === 'arrival' ? 'ARR' : 'DEP';
+
+        div.innerHTML = '<div><span class="strip-callsign ' + roleClass + '">' + ac.callsign + '</span><span class="strip-type">' + ac.type + ' [' + roleLabel + ']</span></div>' +
+            '<div class="strip-info">' + formatAlt(Math.round(ac.altitude)) + ' / ' + Math.round(ac.speed) + 'kt / ' + String(Math.round(ac.heading)).padStart(3, '0') + '°</div>' +
+            '<div class="strip-status">' + statusText + '</div>';
+
+        div.addEventListener('click', function() { selectAircraft(ac); });
+        stripList.appendChild(div);
+    });
+}
+
+// ===== Separation Check =====
+function checkSeparation(ac1, ac2) {
+    var dx = ac1.x - ac2.x;
+    var dy = ac1.y - ac2.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var altDiff = Math.abs(ac1.altitude - ac2.altitude);
+    var minSep = Math.max(ac1.typeDef.separation, ac2.typeDef.separation);
+    if (dist < minSep && altDiff < 1000) {
+        return 'conflict';
+    }
+    if (dist < minSep * 1.5 && altDiff < 1500) {
+        return 'warning';
+    }
+    return 'ok';
+}
+
+// ===== Game Loop =====
+function gameLoop(timestamp) {
+    if (game.state !== 'playing') return;
+
+    var rawDt = (timestamp - game.lastTime) / 1000;
+    game.lastTime = timestamp;
+    if (rawDt > 0.1) rawDt = 0.1; // cap
+    var dt = rawDt * game.timeSpeed;
+
+    // Update time
+    game.time += dt;
+    var remaining = game.timeLimit - game.time;
+    if (remaining < 0) remaining = 0;
+
+    // Spawn waves
+    while (game.waveIndex < game.scenario.waves.length && game.time >= game.scenario.waves[game.waveIndex].time) {
+        var wave = game.scenario.waves[game.waveIndex];
+        wave.aircraft.forEach(function(def) {
+            var ac = new Aircraft(def.callsign, def.type, def.role, def.entry);
+            ac.starName = def.star || null;
+            ac.sidName = def.sid || (def.role === 'departure' && game.airport.sids.length > 0 ? game.airport.sids[0].name : null);
+            ac.currentWaypoint = 0;
+            game.aircraft.push(ac);
+            if (def.role === 'arrival') {
+                addMessage(def.callsign + ' (' + def.type + ') レーダーコンタクト', 'info');
+            } else {
+                addMessage(def.callsign + ' (' + def.type + ') 離陸準備完了', 'info');
+            }
+        });
+        game.waveIndex++;
+    }
+
+    // Update aircraft
+    game.aircraft.forEach(function(ac) { ac.update(dt); });
+
+    // Check separations
+    game.aircraft.forEach(function(ac) { ac.warning = false; ac.conflict = false; });
+    for (var i = 0; i < game.aircraft.length; i++) {
+        for (var j = i + 1; j < game.aircraft.length; j++) {
+            var a = game.aircraft[i];
+            var b = game.aircraft[j];
+            if (a.landed || a.departed || b.landed || b.departed) continue;
+            if (a.status === 'ready' || b.status === 'ready') continue;
+            var result = checkSeparation(a, b);
+            if (result === 'conflict') {
+                a.conflict = true;
+                b.conflict = true;
+                var key = a.callsign + '-' + b.callsign;
+                if (!game.warningPlayed[key]) {
+                    game.warningPlayed[key] = true;
+                    game.conflictCount++;
+                    game.score -= 200;
+                    playWarning();
+                    addMessage('管制間隔喪失! ' + a.callsign + ' - ' + b.callsign, 'warn');
+                }
+            } else if (result === 'warning') {
+                a.warning = true;
+                b.warning = true;
+                var key = 'w-' + a.callsign + '-' + b.callsign;
+                if (!game.warningPlayed[key]) {
+                    game.warningPlayed[key] = true;
+                    addMessage('接近警報: ' + a.callsign + ' - ' + b.callsign, 'warn');
+                }
+            } else {
+                var key = a.callsign + '-' + b.callsign;
+                delete game.warningPlayed[key];
+                delete game.warningPlayed['w-' + key];
+            }
+        }
+    }
+
+    // Sweep
+    game.sweepAngle += rawDt * (Math.PI * 2 / 4); // 4 sec per revolution
+    if (game.sweepAngle > Math.PI * 2) game.sweepAngle -= Math.PI * 2;
+
+    // Render
+    render();
+    updateHUD(remaining);
+    updateStrips();
+    if (game.selectedAC) updateCommandPanel();
+
+    // Check end conditions
+    var allDone = true;
+    var totalExpected = game.totalArrivals + game.totalDepartures;
+    var totalDone = game.landedCount + game.departedCount;
+    // Count diverted
+    var divertedCount = 0;
+    game.aircraft.forEach(function(ac) { if (ac.status === 'diverted') divertedCount++; });
+    totalDone += divertedCount;
+
+    if (game.waveIndex >= game.scenario.waves.length && totalDone >= totalExpected) {
+        var cleared = game.conflictCount === 0 && divertedCount === 0;
+        showResult(cleared);
+        return;
+    }
+
+    if (remaining <= 0) {
+        showResult(false);
+        return;
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+function updateHUD(remaining) {
+    hudScore.textContent = game.score;
+    hudTime.textContent = formatTime(remaining);
+}
+
+// ===== Rendering =====
+function render() {
+    var w = canvas.width;
+    var h = canvas.height;
+    var cx = w / 2;
+    var cy = h / 2;
+    var maxR = Math.min(w, h) / 2.2;
+    var scale = maxR / game.range;
+
+    // Clear
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, w, h);
+
+    // Range rings
+    ctx.strokeStyle = '#003300';
+    ctx.lineWidth = 1;
+    var rings;
+    if (game.range <= 10) rings = [2, 5, 10];
+    else if (game.range <= 20) rings = [5, 10, 20];
+    else rings = [10, 20, 40];
+
+    rings.forEach(function(r) {
+        var radius = r * scale;
+        if (radius > maxR * 1.1) return;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        // Label
+        ctx.fillStyle = '#003300';
+        ctx.font = '10px Courier New';
+        ctx.fillText(r + 'nm', cx + radius + 3, cy - 3);
+    });
+
+    // Compass rose
+    ctx.fillStyle = '#004400';
+    ctx.font = '12px Courier New';
+    ctx.textAlign = 'center';
+    var compassR = maxR + 15;
+    for (var deg = 0; deg < 360; deg += 30) {
+        var rad = (deg - 90) * Math.PI / 180;
+        var tx = cx + Math.cos(rad) * compassR;
+        var ty = cy + Math.sin(rad) * compassR;
+        var label = '';
+        if (deg === 0) label = 'N';
+        else if (deg === 90) label = 'E';
+        else if (deg === 180) label = 'S';
+        else if (deg === 270) label = 'W';
+        else label = String(deg).padStart(3, '0');
+        ctx.fillText(label, tx, ty + 4);
+
+        // Tick
+        var innerR = maxR - 5;
+        var outerR = maxR + 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR);
+        ctx.lineTo(cx + Math.cos(rad) * outerR, cy + Math.sin(rad) * outerR);
+        ctx.strokeStyle = '#004400';
+        ctx.stroke();
+    }
+    ctx.textAlign = 'left';
+
+    // STAR/SID waypoints
+    ctx.font = '10px Courier New';
+    game.airport.stars.forEach(function(star) {
+        ctx.strokeStyle = '#002244';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        star.waypoints.forEach(function(wp, i) {
+            var sx = cx + wp.x * scale;
+            var sy = cy - wp.y * scale;
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Waypoint markers
+        star.waypoints.forEach(function(wp) {
+            var sx = cx + wp.x * scale;
+            var sy = cy - wp.y * scale;
+            ctx.fillStyle = '#003366';
+            ctx.beginPath();
+            ctx.moveTo(sx, sy - 4);
+            ctx.lineTo(sx + 4, sy + 3);
+            ctx.lineTo(sx - 4, sy + 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#004488';
+            ctx.fillText(wp.name, sx + 6, sy + 3);
+        });
+    });
+
+    game.airport.sids.forEach(function(sid) {
+        ctx.strokeStyle = '#222200';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        sid.waypoints.forEach(function(wp, i) {
+            var sx = cx + wp.x * scale;
+            var sy = cy - wp.y * scale;
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        sid.waypoints.forEach(function(wp) {
+            var sx = cx + wp.x * scale;
+            var sy = cy - wp.y * scale;
+            ctx.fillStyle = '#666600';
+            ctx.beginPath();
+            ctx.moveTo(sx, sy - 4);
+            ctx.lineTo(sx + 4, sy + 3);
+            ctx.lineTo(sx - 4, sy + 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#888800';
+            ctx.fillText(wp.name, sx + 6, sy + 3);
+        });
+    });
+
+    // Runway
+    var rwy = game.airport.runways[0];
+    var rwyStartX = cx + rwy.threshold.x * scale;
+    var rwyStartY = cy - rwy.threshold.y * scale;
+    var rwyEndX = cx + rwy.end.x * scale;
+    var rwyEndY = cy - rwy.end.y * scale;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(rwyStartX, rwyStartY);
+    ctx.lineTo(rwyEndX, rwyEndY);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+
+    // Runway label
+    ctx.fillStyle = '#888888';
+    ctx.font = '11px Courier New';
+    ctx.fillText('RWY' + rwy.id, rwyStartX + 8, rwyStartY);
+
+    // ILS centerline
+    if (rwy.ils) {
+        var ilsRad = (rwy.heading - 90 - 180) * Math.PI / 180;
+        ctx.strokeStyle = '#002200';
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(rwyStartX, rwyStartY);
+        ctx.lineTo(rwyStartX + Math.cos(ilsRad) * 10 * scale, rwyStartY - Math.sin(ilsRad) * 10 * scale);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Sweep line
+    ctx.save();
+    var gradient = ctx.createLinearGradient(cx, cy,
+        cx + Math.cos(game.sweepAngle - Math.PI / 2) * maxR,
+        cy + Math.sin(game.sweepAngle - Math.PI / 2) * maxR);
+    gradient.addColorStop(0, 'rgba(0, 255, 0, 0.3)');
+    gradient.addColorStop(1, 'rgba(0, 255, 0, 0.05)');
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(game.sweepAngle - Math.PI / 2) * maxR,
+               cy + Math.sin(game.sweepAngle - Math.PI / 2) * maxR);
+    ctx.stroke();
+
+    // Sweep fade wedge
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.03)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, maxR, game.sweepAngle - Math.PI / 2 - 0.5, game.sweepAngle - Math.PI / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Aircraft
+    game.aircraft.forEach(function(ac) {
+        if (ac.landed || ac.departed) return;
+
+        var sx = cx + ac.x * scale;
+        var sy = cy - ac.y * scale;
+
+        // Check if in radar range (with margin)
+        if (sx < -50 || sx > w + 50 || sy < -50 || sy > h + 50) return;
+
+        // Trail
+        for (var t = 0; t < ac.trail.length; t++) {
+            var tr = ac.trail[t];
+            var tsx = cx + tr.x * scale;
+            var tsy = cy - tr.y * scale;
+            var alpha = (t + 1) / (ac.trail.length + 1) * 0.6;
+            ctx.fillStyle = 'rgba(0, 255, 0, ' + alpha + ')';
+            ctx.beginPath();
+            ctx.arc(tsx, tsy, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Blip
+        var blipColor = '#00ff00';
+        if (ac.role === 'departure') blipColor = '#00ccff';
+        if (ac.selected) blipColor = '#ffff00';
+        if (ac.warning) blipColor = '#ffaa00';
+        if (ac.conflict) blipColor = '#ff0000';
+
+        ctx.fillStyle = blipColor;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Heading line
+        var hdgRad = ac.heading * Math.PI / 180;
+        var lineLen = 15;
+        ctx.strokeStyle = blipColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.sin(hdgRad) * lineLen, sy - Math.cos(hdgRad) * lineLen);
+        ctx.stroke();
+
+        // Data tag
+        ctx.font = '11px Courier New';
+        var tagX = sx + 12;
+        var tagY = sy - 8;
+
+        // Target waypoint name
+        var targetWpName = '';
+        if (ac.directToWaypoint) {
+            targetWpName = '>' + ac.directToWaypoint.name;
+        } else if (ac.handedOff) {
+            targetWpName = 'TWR';
+        } else if (ac.starName && ac.status === 'enroute') {
+            var acStar = null;
+            for (var si2 = 0; si2 < game.airport.stars.length; si2++) {
+                if (game.airport.stars[si2].name === ac.starName) { acStar = game.airport.stars[si2]; break; }
+            }
+            if (acStar && ac.currentWaypoint < acStar.waypoints.length) {
+                targetWpName = '>' + acStar.waypoints[ac.currentWaypoint].name;
+            }
+        } else if (ac.sidName && ac.status === 'departing') {
+            var acSid = null;
+            for (var di2 = 0; di2 < game.airport.sids.length; di2++) {
+                if (game.airport.sids[di2].name === ac.sidName) { acSid = game.airport.sids[di2]; break; }
+            }
+            if (acSid && ac.currentWaypoint < acSid.waypoints.length) {
+                targetWpName = '>' + acSid.waypoints[ac.currentWaypoint].name;
+            }
+        } else if (ac.status === 'ready') {
+            targetWpName = 'RDY';
+        } else if (ac.status === 'takeoff') {
+            targetWpName = 'T/O';
+        } else if (ac.status === 'departing' && !ac.contacted) {
+            targetWpName = 'CONTACT';
+        }
+
+        var tagHeight = targetWpName ? 40 : 28;
+        if (ac.selected) {
+            ctx.fillStyle = 'rgba(50, 50, 0, 0.7)';
+            ctx.fillRect(tagX - 2, tagY - 11, 95, tagHeight);
+        }
+
+        ctx.fillStyle = blipColor;
+        ctx.fillText(ac.callsign, tagX, tagY);
+        var altStr = Math.round(ac.altitude / 100);
+        var spdStr = Math.round(ac.speed);
+        ctx.fillText(String(altStr).padStart(3, '0') + ' ' + spdStr + 'kt', tagX, tagY + 12);
+        if (targetWpName) {
+            ctx.fillStyle = '#88aaff';
+            ctx.fillText(targetWpName, tagX, tagY + 24);
+        }
+
+        // Conflict ring
+        if (ac.conflict) {
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.lineWidth = 1;
+        } else if (ac.warning) {
+            ctx.strokeStyle = '#ffaa00';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(sx, sy, 10, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Ground aircraft indicator
+        if (ac.status === 'ready') {
+            ctx.strokeStyle = '#00ccff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(sx - 6, sy - 6, 12, 12);
+        }
+    });
+
+    // Airport center marker
+    ctx.fillStyle = '#555555';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// ===== Init =====
+initDOM();
+</script>
+</body>
+</html>
