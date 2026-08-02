@@ -472,6 +472,110 @@ body {
     font-size: 16px;
 }
 
+/* STAR complete - pulse animation */
+.flight-strip.star-complete {
+    animation: starPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes starPulse {
+    0%, 100% { background: #0d0d18; }
+    50% { background: #1a1a00; box-shadow: inset 0 0 8px rgba(255, 255, 0, 0.3); }
+}
+
+/* Contact waiting - highlight */
+.flight-strip.contact-waiting {
+    background: #0a1a2a;
+    border-left: 3px solid #00ccff;
+}
+
+.flight-strip.contact-waiting .strip-status {
+    color: #00ccff;
+    font-weight: bold;
+}
+
+/* Pause overlay */
+#pause-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 900;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#pause-overlay h2 {
+    font-size: 64px;
+    color: #00ff00;
+    text-shadow: 0 0 30px #00ff00;
+    margin-bottom: 20px;
+}
+
+#pause-overlay .pause-hint {
+    font-size: 16px;
+    color: #00aa00;
+}
+
+/* Pause button in header */
+.pause-btn {
+    background: transparent;
+    border: 1px solid #005500;
+    color: #00aa00;
+    padding: 2px 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.pause-btn:hover {
+    background: #002200;
+    border-color: #00ff00;
+    color: #00ff00;
+}
+
+/* Result details */
+.result-details {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border: 1px solid #003300;
+    padding: 15px 20px;
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 400px;
+}
+
+.result-details h3 {
+    color: #00cc00;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.result-ac-row {
+    font-size: 12px;
+    color: #00aa00;
+    padding: 3px 0;
+    border-bottom: 1px solid #001a00;
+}
+
+.result-ac-row span {
+    color: #ffffff;
+}
+
+.result-ac-row .result-ac-status {
+    float: right;
+}
+
+.result-ac-row .result-ac-status.success { color: #00ff00; }
+.result-ac-row .result-ac-status.fail { color: #ff4444; }
+.result-ac-row .result-ac-status.pending { color: #ffaa00; }
+
+/* Landing progress message */
+.msg-line.landing {
+    color: #ffaa00;
+    font-weight: bold;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #0a0a12; }
@@ -515,6 +619,7 @@ body {
                     <button class="speed-btn" data-speed="4">4x</button>
                 </span>
             </div>
+            <button class="pause-btn" id="btn-pause">PAUSE</button>
         </div>
     </div>
     <div id="game-main">
@@ -566,13 +671,24 @@ body {
     </div>
 </div>
 
+<!-- Pause Overlay -->
+<div id="pause-overlay">
+    <h2>PAUSED</h2>
+    <div class="pause-hint">Press ESC or click to resume</div>
+</div>
+
 <!-- Result Overlay -->
 <div id="result-overlay">
     <h2 id="result-title">STAGE CLEAR</h2>
     <div class="result-stats">着陸: <span id="res-landed">0</span> 機</div>
     <div class="result-stats">離陸: <span id="res-departed">0</span> 機</div>
     <div class="result-stats">ニアミス: <span id="res-conflicts">0</span> 回</div>
+    <div class="result-stats">ゴーアラウンド: <span id="res-goaround">0</span> 回</div>
     <div class="result-stats">スコア: <span id="res-score">0</span></div>
+    <div class="result-details" id="res-details">
+        <h3>-- 全機スコア内訳 --</h3>
+        <div id="res-ac-list"></div>
+    </div>
     <button class="start-btn" id="btn-retry">RETRY</button>
     <button class="start-btn title-return-btn" id="btn-title">TITLE</button>
 </div>
@@ -1030,8 +1146,19 @@ Aircraft.prototype.update = function(dt) {
             this.targetSpeed = this.typeDef.speed.min + 10;
         }
 
+        // Landing progress messages
         if (dist > 0.3) {
-            this.status = 'approach';
+            if (dist < 8 && dist > 5 && !this._msgApproach) {
+                this._msgApproach = true;
+                this.status = 'approach';
+                addMessage('[TWR] ' + this.callsign + ' RWY' + rwy.id + ' アプローチ中...', 'landing');
+            } else if (dist < 3 && !this._msgFinal) {
+                this._msgFinal = true;
+                this.status = 'approach';
+                addMessage('[TWR] ' + this.callsign + ' ファイナルアプローチ', 'landing');
+            } else {
+                this.status = 'approach';
+            }
         }
 
         // Landing check - must be near threshold, low altitude, correct heading, approaching from correct side
@@ -1041,7 +1168,7 @@ Aircraft.prototype.update = function(dt) {
                 this.status = 'landing';
                 this.landed = true;
                 playLanding();
-                addMessage(this.callsign + ' RWY' + rwy.id + ' 着陸!', 'success');
+                addMessage('[TWR] ' + this.callsign + ' RWY' + rwy.id + ' タッチダウン!', 'success');
                 game.score += 100;
                 game.landedCount++;
                 return;
@@ -1057,7 +1184,9 @@ Aircraft.prototype.update = function(dt) {
             this.targetHeading = rwyHdg;
             this.targetSpeed = this.typeDef.speed.cruise;
             this.status = 'enroute';
+            this.goAround = true;
             game.score -= 50;
+            game.goAroundCount++;
             playWarning();
         }
     }
@@ -1173,6 +1302,7 @@ var game = {
     landedCount: 0,
     departedCount: 0,
     conflictCount: 0,
+    goAroundCount: 0,
     totalArrivals: 0,
     totalDepartures: 0,
     waveIndex: 0,
@@ -1368,6 +1498,21 @@ function initDOM() {
     // Canvas click
     canvas.addEventListener('click', onCanvasClick);
 
+    // Pause button
+    document.getElementById('btn-pause').addEventListener('click', togglePause);
+
+    // Pause overlay click to resume
+    document.getElementById('pause-overlay').addEventListener('click', function() {
+        if (game.paused) togglePause();
+    });
+
+    // Escape key for pause
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && game.state === 'playing') {
+            togglePause();
+        }
+    });
+
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 }
@@ -1376,6 +1521,20 @@ function resizeCanvas() {
     var container = document.getElementById('radar-container');
     canvas.width = container.clientWidth;
     canvas.height = container.clientHeight;
+}
+
+// ===== Pause =====
+function togglePause() {
+    if (game.state !== 'playing') return;
+    game.paused = !game.paused;
+    var overlay = document.getElementById('pause-overlay');
+    if (game.paused) {
+        overlay.style.display = 'flex';
+    } else {
+        overlay.style.display = 'none';
+        game.lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
 }
 
 // ===== Game Flow =====
@@ -1394,9 +1553,11 @@ function startGame() {
     game.landedCount = 0;
     game.departedCount = 0;
     game.conflictCount = 0;
+    game.goAroundCount = 0;
     game.waveIndex = 0;
     game.warningPlayed = {};
     game.messages = [];
+    game.paused = false;
     game.approachRouteMode = false;
     game.scenario = SCENARIO_RJFK;
     game.airport = SCENARIO_RJFK.airport;
@@ -1420,6 +1581,7 @@ function startGame() {
     titleScreen.style.display = 'none';
     gameScreen.style.display = 'flex';
     resultOverlay.style.display = 'none';
+    document.getElementById('pause-overlay').style.display = 'none';
     cmdPanel.style.display = 'none';
     hudStage.textContent = game.scenario.name;
 
@@ -1451,7 +1613,28 @@ function showResult(cleared) {
     document.getElementById('res-landed').textContent = game.landedCount;
     document.getElementById('res-departed').textContent = game.departedCount;
     document.getElementById('res-conflicts').textContent = game.conflictCount;
+    document.getElementById('res-goaround').textContent = game.goAroundCount;
     document.getElementById('res-score').textContent = game.score;
+
+    // Build per-aircraft detail list
+    var acList = document.getElementById('res-ac-list');
+    acList.innerHTML = '';
+    game.aircraft.forEach(function(ac) {
+        var row = document.createElement('div');
+        row.className = 'result-ac-row';
+        var roleLabel = ac.role === 'arrival' ? 'ARR' : 'DEP';
+        var statusLabel = '';
+        var statusClass = 'pending';
+        if (ac.landed) { statusLabel = '着陸成功 (+100)'; statusClass = 'success'; }
+        else if (ac.departed) { statusLabel = '出発完了 (+80)'; statusClass = 'success'; }
+        else if (ac.status === 'diverted') { statusLabel = 'ダイバート (-100)'; statusClass = 'fail'; }
+        else { statusLabel = '未完了'; statusClass = 'pending'; }
+        if (ac.goAround) statusLabel += ' / GA (-50)';
+        if (ac.conflict) statusLabel += ' / ニアミス';
+        row.innerHTML = '<span>' + ac.callsign + ' (' + ac.type + ') [' + roleLabel + ']</span>' +
+            '<span class="result-ac-status ' + statusClass + '">' + statusLabel + '</span>';
+        acList.appendChild(row);
+    });
 }
 
 // ===== Message Log =====
@@ -1738,6 +1921,10 @@ function updateStrips() {
         div.className = 'flight-strip';
         if (ac.selected) div.className += ' selected';
         if (ac.conflict) div.className += ' warning';
+        // STAR complete and holding - pulse alert
+        if (ac.holding && ac.role === 'arrival' && !ac.ilsCleared) div.className += ' star-complete';
+        // Contact waiting - departure highlight
+        if (ac.status === 'departing' && !ac.contacted) div.className += ' contact-waiting';
 
         var statusText = '';
         switch (ac.status) {
@@ -1788,6 +1975,7 @@ function checkSeparation(ac1, ac2) {
 // ===== Game Loop =====
 function gameLoop(timestamp) {
     if (game.state !== 'playing') return;
+    if (game.paused) return;
 
     var rawDt = (timestamp - game.lastTime) / 1000;
     game.lastTime = timestamp;
@@ -1948,30 +2136,43 @@ function render() {
     });
 
     // Compass rose
-    ctx.fillStyle = '#004400';
-    ctx.font = '12px Courier New';
     ctx.textAlign = 'center';
     var compassR = maxR + 15;
+    var compassRLarge = maxR + 22;
     for (var deg = 0; deg < 360; deg += 30) {
         var rad = (deg - 90) * Math.PI / 180;
-        var tx = cx + Math.cos(rad) * compassR;
-        var ty = cy + Math.sin(rad) * compassR;
+        var isCardinal = (deg === 0 || deg === 90 || deg === 180 || deg === 270);
         var label = '';
         if (deg === 0) label = 'N';
         else if (deg === 90) label = 'E';
         else if (deg === 180) label = 'S';
         else if (deg === 270) label = 'W';
         else label = String(deg).padStart(3, '0');
-        ctx.fillText(label, tx, ty + 4);
+
+        if (isCardinal) {
+            ctx.fillStyle = '#00ff00';
+            ctx.font = 'bold 18px Courier New';
+            var tx = cx + Math.cos(rad) * compassRLarge;
+            var ty = cy + Math.sin(rad) * compassRLarge;
+            ctx.fillText(label, tx, ty + 6);
+        } else {
+            ctx.fillStyle = '#004400';
+            ctx.font = '12px Courier New';
+            var tx = cx + Math.cos(rad) * compassR;
+            var ty = cy + Math.sin(rad) * compassR;
+            ctx.fillText(label, tx, ty + 4);
+        }
 
         // Tick
-        var innerR = maxR - 5;
-        var outerR = maxR + 2;
+        var innerR = maxR - (isCardinal ? 8 : 5);
+        var outerR = maxR + (isCardinal ? 4 : 2);
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR);
         ctx.lineTo(cx + Math.cos(rad) * outerR, cy + Math.sin(rad) * outerR);
-        ctx.strokeStyle = '#004400';
+        ctx.strokeStyle = isCardinal ? '#00aa00' : '#004400';
+        ctx.lineWidth = isCardinal ? 2 : 1;
         ctx.stroke();
+        ctx.lineWidth = 1;
     }
     ctx.textAlign = 'left';
 
