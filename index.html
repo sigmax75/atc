@@ -1199,11 +1199,26 @@ function initDOM() {
 
     cmdIls.addEventListener('click', function() {
         if (!game.selectedAC || game.selectedAC.role !== 'arrival') return;
-        game.selectedAC.ilsCleared = true;
-        game.selectedAC.holding = false;
-        game.selectedAC.handedOff = true;
+        var ac = game.selectedAC;
+        var rwy = game.airport.runways[0];
+        var hdDx = rwy.threshold.x - ac.x;
+        var hdDy = rwy.threshold.y - ac.y;
+        var hdDist = Math.sqrt(hdDx * hdDx + hdDy * hdDy);
+        if (hdDist > 10) {
+            addMessage('ハンドオフ不可 - 空港から遠すぎます（' + Math.round(hdDist) + 'nm）', 'warn');
+            playWarning();
+            return;
+        }
+        if (ac.altitude > 4000) {
+            addMessage('ハンドオフ不可 - 高度が高すぎます（' + formatAlt(Math.round(ac.altitude)) + '）', 'warn');
+            playWarning();
+            return;
+        }
+        ac.ilsCleared = true;
+        ac.holding = false;
+        ac.handedOff = true;
         playClick();
-        addMessage(game.selectedAC.callsign + ' タワーへハンドオフ - ILS RWY' + game.airport.runways[0].id, 'info');
+        addMessage(ac.callsign + ' タワーへハンドオフ - ILS RWY' + rwy.id, 'info');
         updateCommandPanel();
     });
 
@@ -1473,9 +1488,13 @@ function updateCommandPanel() {
     var ac = game.selectedAC;
     if (!ac) return;
 
-    // ILS button
+    // TWR handoff button - only when close enough and low enough
     if (ac.role === 'arrival' && !ac.ilsCleared) {
-        cmdIls.disabled = false;
+        var rwy = game.airport.runways[0];
+        var hoDx = rwy.threshold.x - ac.x;
+        var hoDy = rwy.threshold.y - ac.y;
+        var hoDist = Math.sqrt(hoDx * hoDx + hoDy * hoDy);
+        cmdIls.disabled = !(hoDist <= 10 && ac.altitude <= 4000);
     } else {
         cmdIls.disabled = true;
     }
