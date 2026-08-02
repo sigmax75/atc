@@ -2322,16 +2322,51 @@ function render() {
     ctx.font = '11px Courier New';
     ctx.fillText('RWY' + rwy.id, rwyStartX + 8, rwyStartY);
 
-    // ILS centerline
+    // ILS centerline with chevrons (FINAL to threshold)
     if (rwy.ils) {
-        var ilsRad = (rwy.heading - 90 - 180) * Math.PI / 180;
-        ctx.strokeStyle = '#002200';
+        var ffX = cx + FINAL_FIX.x * scale;
+        var ffY = cy - FINAL_FIX.y * scale;
+        // Centerline
+        ctx.strokeStyle = '#003300';
+        ctx.lineWidth = 1;
         ctx.setLineDash([6, 6]);
         ctx.beginPath();
-        ctx.moveTo(rwyStartX, rwyStartY);
-        ctx.lineTo(rwyStartX + Math.cos(ilsRad) * 10 * scale, rwyStartY - Math.sin(ilsRad) * 10 * scale);
+        ctx.moveTo(ffX, ffY);
+        ctx.lineTo(rwyStartX, rwyStartY);
         ctx.stroke();
         ctx.setLineDash([]);
+        // Chevrons along centerline (approach direction arrows)
+        var appDirX = rwyStartX - ffX;
+        var appDirY = rwyStartY - ffY;
+        var appLen = Math.sqrt(appDirX * appDirX + appDirY * appDirY);
+        var ndx = appDirX / appLen;
+        var ndy = appDirY / appLen;
+        var perpX = -ndy;
+        var perpY = ndx;
+        var chevronSize = 6;
+        ctx.strokeStyle = '#004400';
+        ctx.lineWidth = 1;
+        for (var ci = 0.2; ci < 0.9; ci += 0.15) {
+            var cpx = ffX + appDirX * ci;
+            var cpy = ffY + appDirY * ci;
+            ctx.beginPath();
+            ctx.moveTo(cpx - ndx * chevronSize + perpX * chevronSize, cpy - ndy * chevronSize + perpY * chevronSize);
+            ctx.lineTo(cpx, cpy);
+            ctx.lineTo(cpx - ndx * chevronSize - perpX * chevronSize, cpy - ndy * chevronSize - perpY * chevronSize);
+            ctx.stroke();
+        }
+        // FINAL fix marker
+        ctx.fillStyle = '#005500';
+        ctx.beginPath();
+        ctx.moveTo(ffX, ffY - 5);
+        ctx.lineTo(ffX + 5, ffY + 3);
+        ctx.lineTo(ffX - 5, ffY + 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#006600';
+        ctx.font = '10px Courier New';
+        ctx.textAlign = 'left';
+        ctx.fillText('FINAL', ffX + 7, ffY + 3);
     }
 
     // Sweep line
