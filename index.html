@@ -989,25 +989,25 @@ Aircraft.prototype.update = function(dt) {
         // Along track: positive = ahead of threshold in landing direction, negative = approach side
         var alongTrack = taxf * locDirX + tayf * locDirY;
 
-        if (alongTrack > 0.5) {
-            // Aircraft is PAST the threshold (wrong side) - fly to intercept point
-            var interceptX = rwy.threshold.x - locDirX * 8;
-            var interceptY = rwy.threshold.y - locDirY * 8;
-            var intDx = interceptX - this.x;
-            var intDy = interceptY - this.y;
-            this.targetHeading = (Math.atan2(intDx, intDy) * 180 / Math.PI + 360) % 360;
-        } else if (dist > 5) {
-            // Far on correct side: head toward intercept point 5nm before threshold
-            var interceptX2 = rwy.threshold.x - locDirX * 5;
-            var interceptY2 = rwy.threshold.y - locDirY * 5;
-            var intDx2 = interceptX2 - this.x;
-            var intDy2 = interceptY2 - this.y;
-            this.targetHeading = (Math.atan2(intDx2, intDy2) * 180 / Math.PI + 360) % 360;
+        if (alongTrack > 1) {
+            // Aircraft is PAST the threshold (wrong side) - fly away to reposition
+            var goAroundX = rwy.threshold.x - locDirX * 10;
+            var goAroundY = rwy.threshold.y - locDirY * 10;
+            var gaDx = goAroundX - this.x;
+            var gaDy = goAroundY - this.y;
+            this.targetHeading = (Math.atan2(gaDx, gaDy) * 180 / Math.PI + 360) % 360;
         } else {
-            // Close on correct side: fly runway heading with cross-track correction
-            var correction = Math.atan2(crossTrack, Math.max(0.5, dist)) * 180 / Math.PI;
-            correction = Math.max(-30, Math.min(30, correction * 2));
-            this.targetHeading = (rwyHdg + correction + 360) % 360;
+            // Head directly toward threshold, blending to runway heading as we get closer
+            var directHdg = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+            if (dist > 3) {
+                // Far: fly direct to threshold
+                this.targetHeading = directHdg;
+            } else {
+                // Close: blend toward runway heading
+                var blend = Math.max(0, (3 - dist) / 3);
+                var hdgDiff = ((rwyHdg - directHdg + 540) % 360) - 180;
+                this.targetHeading = (directHdg + hdgDiff * blend + 360) % 360;
+            }
         }
 
         // Glideslope: 3 degree (approx 300ft per nm), target airport elevation at threshold
