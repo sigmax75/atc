@@ -703,9 +703,9 @@ var APPROACH_ROUTES = [
         label: 'R-BASE',
         color: '#00aa66',
         waypoints: [
-            { x: 3, y: -3, alt: 2500 },
-            { x: 1, y: -5, alt: 2000 },
-            { x: -0.3, y: -5, alt: 1800 }
+            { x: 4, y: -2, alt: 2500 },
+            { x: 3, y: -4, alt: 2000 },
+            { x: 0.8, y: -3, alt: 1800 }
         ]
     },
     {
@@ -713,9 +713,9 @@ var APPROACH_ROUTES = [
         label: 'L-BASE',
         color: '#6688cc',
         waypoints: [
-            { x: -5, y: -3, alt: 2500 },
-            { x: -2, y: -5, alt: 2000 },
-            { x: -0.3, y: -5, alt: 1800 }
+            { x: -5, y: -2, alt: 2500 },
+            { x: -3, y: -4, alt: 2000 },
+            { x: 0.8, y: -3, alt: 1800 }
         ]
     },
     {
@@ -723,8 +723,8 @@ var APPROACH_ROUTES = [
         label: 'L-FINAL',
         color: '#cc8844',
         waypoints: [
-            { x: 0, y: -8, alt: 3000 },
-            { x: 0, y: -5, alt: 2000 }
+            { x: 0.6, y: -8, alt: 2500 },
+            { x: 0.8, y: -3, alt: 1800 }
         ]
     }
 ];
@@ -859,8 +859,11 @@ Aircraft.prototype.update = function(dt) {
                 }
             }
         } else {
-            // Route complete - clear it
+            // Route complete - auto handoff to tower + ILS
             this.approachRoute = null;
+            this.ilsCleared = true;
+            this.handedOff = true;
+            addMessage('[APP] ' + this.callsign + ' タワーへハンドオフ - ILS RWY' + game.airport.runways[0].id, 'info');
         }
     }
 
