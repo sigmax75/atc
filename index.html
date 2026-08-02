@@ -819,15 +819,22 @@ var RJFK = {
 };
 
 // Predefined approach routes for vectoring
+// FAF (Final Approach Fix) on RWY34 extended centerline
+// RWY34 heading=340, approach from 160 deg
+// Centerline: threshold(0.51,-1.41) extending at 160 deg
+var FAF_8NM = { x: 3.2, y: -8.9 };  // 8nm from threshold on centerline
+var FAF_4NM = { x: 1.9, y: -5.2 };  // 4nm from threshold on centerline
+
 var APPROACH_ROUTES = [
     {
         name: 'Right Base',
         label: 'R-BASE',
         color: '#00aa66',
         waypoints: [
-            { x: 4, y: -2, alt: 2500 },
-            { x: 3, y: -4, alt: 2000 },
-            { x: 0.8, y: -3, alt: 1500 },
+            { x: 6, y: -4, alt: 3000 },
+            { x: 5, y: -7, alt: 2700 },
+            { name: 'FAF', x: FAF_8NM.x, y: FAF_8NM.y, alt: 2700 },
+            { name: 'IF', x: FAF_4NM.x, y: FAF_4NM.y, alt: 2100 },
             { x: 0.51, y: -1.41, alt: 906, hidden: true, isThreshold: true }
         ]
     },
@@ -836,9 +843,10 @@ var APPROACH_ROUTES = [
         label: 'L-BASE',
         color: '#6688cc',
         waypoints: [
-            { x: -5, y: -2, alt: 2500 },
-            { x: -3, y: -4, alt: 2000 },
-            { x: 0.8, y: -3, alt: 1500 },
+            { x: -5, y: -4, alt: 3000 },
+            { x: -2, y: -7, alt: 2700 },
+            { name: 'FAF', x: FAF_8NM.x, y: FAF_8NM.y, alt: 2700 },
+            { name: 'IF', x: FAF_4NM.x, y: FAF_4NM.y, alt: 2100 },
             { x: 0.51, y: -1.41, alt: 906, hidden: true, isThreshold: true }
         ]
     },
@@ -847,8 +855,9 @@ var APPROACH_ROUTES = [
         label: 'L-FINAL',
         color: '#cc8844',
         waypoints: [
-            { x: 0.6, y: -8, alt: 2500 },
-            { x: 0.8, y: -3, alt: 1500 },
+            { x: 4.0, y: -12, alt: 3500 },
+            { name: 'FAF', x: FAF_8NM.x, y: FAF_8NM.y, alt: 2700 },
+            { name: 'IF', x: FAF_4NM.x, y: FAF_4NM.y, alt: 2100 },
             { x: 0.51, y: -1.41, alt: 906, hidden: true, isThreshold: true }
         ]
     }
@@ -1801,8 +1810,9 @@ function executeGoAround(ac) {
         name: 'Go Around',
         waypoints: [
             { x: ac.x + Math.sin(rwyRad) * 3, y: ac.y + Math.cos(rwyRad) * 3, alt: 3000 },
-            { x: 0.6, y: -8, alt: 2500 },
-            { x: 0.8, y: -3, alt: 1500 },
+            { x: 4.0, y: -12, alt: 3500 },
+            { name: 'FAF', x: FAF_8NM.x, y: FAF_8NM.y, alt: 2700 },
+            { name: 'IF', x: FAF_4NM.x, y: FAF_4NM.y, alt: 2100 },
             { x: 0.51, y: -1.41, alt: 906, hidden: true, isThreshold: true }
         ],
         currentIndex: 0
