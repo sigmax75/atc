@@ -285,8 +285,6 @@ body {
     border-radius: 8px;
     padding: 10px 15px;
     position: fixed;
-    bottom: 10px;
-    right: 10px;
     z-index: 50;
     backdrop-filter: blur(4px);
     max-width: 360px;
@@ -1851,11 +1849,23 @@ function deselectAll() {
 
 function showCommand(ac) {
     cmdPanel.style.display = 'block';
-    // Position panel at right side to avoid blocking radar
-    cmdPanel.style.top = 'auto';
-    cmdPanel.style.bottom = '10px';
-    cmdPanel.style.left = 'auto';
-    cmdPanel.style.right = '10px';
+    // Position panel near the clicked aircraft
+    var acScale = Math.min(canvas.width, canvas.height) / (game.range * 2.2);
+    var acSX = canvas.width / 2 + ac.x * acScale;
+    var acSY = canvas.height / 2 - ac.y * acScale;
+    var rect = canvas.getBoundingClientRect();
+    var panelW = 340;
+    var panelH = 120;
+    var pLeft = rect.left + acSX + 20;
+    var pTop = rect.top + acSY - panelH / 2;
+    // Keep on screen
+    if (pLeft + panelW > window.innerWidth) pLeft = rect.left + acSX - panelW - 20;
+    if (pTop < 50) pTop = 50;
+    if (pTop + panelH > window.innerHeight - 10) pTop = window.innerHeight - panelH - 10;
+    cmdPanel.style.left = pLeft + 'px';
+    cmdPanel.style.top = pTop + 'px';
+    cmdPanel.style.right = 'auto';
+    cmdPanel.style.bottom = 'auto';
     cmdPanel.style.transform = 'none';
     cmdCallsign.textContent = ac.callsign + ' (' + ac.type + ')';
 
