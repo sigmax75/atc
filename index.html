@@ -1007,22 +1007,7 @@ Aircraft.prototype.update = function(dt) {
                 game.landedCount++;
                 return;
             } else {
-                // Too high at threshold - go around
-                addMessage(this.callsign + ' ゴーアラウンド - 高度超過', 'warn');
-                this.ilsCleared = false;
-                this.handedOff = false;
-                this.targetAlt = 3000;
-                this.targetHeading = game.airport.runways[0].heading;
-                this.targetSpeed = this.typeDef.speed.cruise;
-                this.status = 'enroute';
-                this.holding = true;
-                this.goAround = true;
-                this._msgApproach = false;
-                this._msgFinal = false;
-                game.score -= 50;
-                game.goAroundCount++;
-                playWarning();
-                addMessage(this.callsign + ' ホールド中 - 再アプローチ指示待ち', 'info');
+                executeGoAround(this);
             }
         }
     }
@@ -1221,21 +1206,7 @@ Aircraft.prototype.update = function(dt) {
 
         // Missed approach - passed threshold too high or wrong heading
         if (alongTrack > 0.3 && this.altitude > game.airport.elevation + 200) {
-            addMessage(this.callsign + ' ゴーアラウンド', 'warn');
-            this.ilsCleared = false;
-            this.handedOff = false;
-            this.targetAlt = 3000;
-            this.targetHeading = rwyHdg;
-            this.targetSpeed = this.typeDef.speed.cruise;
-            this.status = 'enroute';
-            this.holding = true;
-            this.goAround = true;
-            this._msgApproach = false;
-            this._msgFinal = false;
-            game.score -= 50;
-            game.goAroundCount++;
-            playWarning();
-            addMessage(this.callsign + ' ホールド中 - 再アプローチ指示待ち', 'info');
+            executeGoAround(this);
         }
     }
 
@@ -1807,6 +1778,41 @@ function onCanvasClick(e) {
     } else {
         deselectAll();
     }
+}
+
+function executeGoAround(ac) {
+    addMessage(ac.callsign + ' ゴーアラウンド', 'warn');
+    ac.ilsCleared = false;
+    ac.handedOff = false;
+    ac.approachRoute = null;
+    ac.directToWaypoint = null;
+    ac.goAround = true;
+    ac._msgApproach = false;
+    ac._msgFinal = false;
+    game.score -= 50;
+    game.goAroundCount++;
+    playWarning();
+
+    // Auto-assign go-around route: climb straight ahead then Long Final
+    var rwy = game.airport.runways[0];
+    var rwyRad = rwy.heading * Math.PI / 180;
+    // Fly runway heading for 3nm, climb to 3000ft, then re-approach via Long Final
+    var gaRoute = {
+        name: 'Go Around',
+        waypoints: [
+            { x: ac.x + Math.sin(rwyRad) * 3, y: ac.y + Math.cos(rwyRad) * 3, alt: 3000 },
+            { x: 0.6, y: -8, alt: 2500 },
+            { x: 0.8, y: -3, alt: 1500 },
+            { x: 0.51, y: -1.41, alt: 906, hidden: true, isThreshold: true }
+        ],
+        currentIndex: 0
+    };
+    ac.approachRoute = gaRoute;
+    ac.holding = false;
+    ac.status = 'enroute';
+    ac.targetAlt = 3000;
+    ac.targetSpeed = ac.typeDef.speed.cruise;
+    addMessage(ac.callsign + ' 再アプローチ (Long Final)', 'info');
 }
 
 function assignApproachRoute(ac, route) {
