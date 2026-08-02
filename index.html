@@ -1161,8 +1161,8 @@ Aircraft.prototype.update = function(dt) {
             }
         }
 
-        // Landing check - must be near threshold, low altitude, correct heading, approaching from correct side
-        if (dist < 0.4 && this.altitude < game.airport.elevation + 300 && alongTrack < 0.5) {
+        // Landing check - near threshold, near ground level, correct heading, correct side
+        if (dist < 0.5 && this.altitude < game.airport.elevation + 100 && alongTrack < 0.5) {
             var hdgDiff = Math.abs(((this.heading - rwyHdg + 540) % 360) - 180);
             if (hdgDiff < 30) {
                 this.status = 'landing';
@@ -1175,19 +1175,23 @@ Aircraft.prototype.update = function(dt) {
             }
         }
 
-        // Missed approach - passed threshold and too high
-        if (alongTrack > 0.5 && this.altitude > game.airport.elevation + 500) {
-            addMessage(this.callsign + ' ゴーアラウンド - 高度超過', 'warn');
+        // Missed approach - passed threshold too high or wrong heading
+        if (alongTrack > 0.3 && this.altitude > game.airport.elevation + 200) {
+            addMessage(this.callsign + ' ゴーアラウンド', 'warn');
             this.ilsCleared = false;
             this.handedOff = false;
             this.targetAlt = 3000;
             this.targetHeading = rwyHdg;
             this.targetSpeed = this.typeDef.speed.cruise;
             this.status = 'enroute';
+            this.holding = true;
             this.goAround = true;
+            this._msgApproach = false;
+            this._msgFinal = false;
             game.score -= 50;
             game.goAroundCount++;
             playWarning();
+            addMessage(this.callsign + ' ホールド中 - 再アプローチ指示待ち', 'info');
         }
     }
 
