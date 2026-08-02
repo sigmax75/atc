@@ -914,52 +914,52 @@ Aircraft.prototype.update = function(dt) {
         var dy = rwy.threshold.y - this.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
 
+        // Localizer centerline direction
+        var locDirX = Math.sin(rwyHdg * Math.PI / 180);
+        var locDirY = Math.cos(rwyHdg * Math.PI / 180);
+
+        // Vector from threshold to aircraft
+        var taxf = this.x - rwy.threshold.x;
+        var tayf = this.y - rwy.threshold.y;
+
+        // Cross track error
+        var crossTrack = taxf * locDirY - tayf * locDirX;
+
+        if (dist > 5) {
+            // Far: head toward intercept point 5nm before threshold
+            var interceptX = rwy.threshold.x - locDirX * 5;
+            var interceptY = rwy.threshold.y - locDirY * 5;
+            var intDx = interceptX - this.x;
+            var intDy = interceptY - this.y;
+            this.targetHeading = (Math.atan2(intDx, intDy) * 180 / Math.PI + 360) % 360;
+        } else {
+            // Close: fly runway heading with cross-track correction
+            var correction = Math.atan2(crossTrack, Math.max(0.5, dist)) * 180 / Math.PI;
+            correction = Math.max(-30, Math.min(30, correction * 2));
+            this.targetHeading = (rwyHdg + correction + 360) % 360;
+        }
+
+        // Glideslope: 3 degree (approx 300ft per nm), target airport elevation at threshold
+        var gsAlt = dist * 300 + game.airport.elevation;
+        this.targetAlt = Math.max(game.airport.elevation, gsAlt);
+        // Force descent rate if above glideslope
+        if (this.altitude > gsAlt + 500) {
+            this.targetAlt = gsAlt;
+        }
+
+        // Slow down on approach
+        if (dist < 8) {
+            this.targetSpeed = this.typeDef.speed.min + 10;
+        }
+
         if (dist > 0.3) {
-            // Project aircraft position onto localizer centerline
-            // Localizer extends from threshold in approach direction (opposite of rwy heading)
-            var locDirX = Math.sin(rwyHdg * Math.PI / 180);
-            var locDirY = Math.cos(rwyHdg * Math.PI / 180);
-
-            // Vector from threshold to aircraft
-            var taxf = this.x - rwy.threshold.x;
-            var tayf = this.y - rwy.threshold.y;
-
-            // Cross track error (positive = right of centerline)
-            var crossTrack = taxf * locDirY - tayf * locDirX;
-
-            // Along track (negative = before threshold on approach side)
-            var alongTrack = taxf * locDirX + tayf * locDirY;
-
-            if (dist > 5) {
-                // Far out: head toward a point on the localizer 5nm before threshold
-                var interceptX = rwy.threshold.x - locDirX * 5;
-                var interceptY = rwy.threshold.y - locDirY * 5;
-                var intDx = interceptX - this.x;
-                var intDy = interceptY - this.y;
-                this.targetHeading = (Math.atan2(intDx, intDy) * 180 / Math.PI + 360) % 360;
-            } else {
-                // Close: fly runway heading with cross-track correction
-                var correction = Math.atan2(crossTrack, dist) * 180 / Math.PI;
-                correction = Math.max(-30, Math.min(30, correction * 2));
-                this.targetHeading = (rwyHdg + correction + 360) % 360;
-            }
-
-            // Glideslope: 3 degree descent (300ft per nm)
-            var targetAlt = Math.max(0, dist * 300 + game.airport.elevation);
-            if (targetAlt < this.altitude) {
-                this.targetAlt = targetAlt;
-            }
-            // Slow down on approach
-            if (dist < 8) {
-                this.targetSpeed = this.typeDef.speed.min + 15;
-            }
             this.status = 'approach';
         }
 
-        // Landing check
-        if (dist < 0.5 && this.altitude < game.airport.elevation + 300) {
+        // Landing check - more generous
+        if (dist < 0.8 && this.altitude < game.airport.elevation + 500) {
             var hdgDiff = Math.abs(((this.heading - rwyHdg + 540) % 360) - 180);
-            if (hdgDiff < 30) {
+            if (hdgDiff < 45) {
                 this.status = 'landing';
                 this.landed = true;
                 playLanding();
@@ -968,6 +968,19 @@ Aircraft.prototype.update = function(dt) {
                 game.landedCount++;
                 return;
             }
+        }
+
+        // Missed approach - passed threshold and too high
+        if (dist < 0.3 && this.altitude > game.airport.elevation + 800) {
+            addMessage(this.callsign + ' ゴーアラウンド - 高度超過', 'warn');
+            this.ilsCleared = false;
+            this.handedOff = false;
+            this.targetAlt = 3000;
+            this.targetHeading = rwyHdg;
+            this.targetSpeed = this.typeDef.speed.cruise;
+            this.status = 'enroute';
+            game.score -= 50;
+            playWarning();
         }
     }
 
