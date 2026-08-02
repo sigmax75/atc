@@ -1121,6 +1121,8 @@ function initDOM() {
 
     cmdAlt.addEventListener('change', function() {
         if (!game.selectedAC) return;
+        if (game.selectedAC.role === 'departure' && !game.selectedAC.contacted) return;
+        if (game.selectedAC.handedOff) return;
         game.selectedAC.targetAlt = parseInt(cmdAlt.value);
         playClick();
         addMessage(game.selectedAC.callsign + ' 高度 ' + formatAlt(game.selectedAC.targetAlt) + ' に変更', 'info');
@@ -1128,6 +1130,8 @@ function initDOM() {
 
     cmdHdg.addEventListener('change', function() {
         if (!game.selectedAC) return;
+        if (game.selectedAC.role === 'departure' && !game.selectedAC.contacted) return;
+        if (game.selectedAC.handedOff) return;
         game.selectedAC.targetHeading = parseInt(cmdHdg.value);
         game.selectedAC.holding = false;
         game.selectedAC.directToWaypoint = null;
@@ -1137,6 +1141,8 @@ function initDOM() {
 
     cmdWaypoint.addEventListener('change', function() {
         if (!game.selectedAC || !cmdWaypoint.value) return;
+        if (game.selectedAC.role === 'departure' && !game.selectedAC.contacted) return;
+        if (game.selectedAC.handedOff) return;
         var wpName = cmdWaypoint.value;
         var wp = findWaypoint(wpName);
         if (wp) {
