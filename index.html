@@ -821,7 +821,8 @@ var APPROACH_ROUTES = [
         waypoints: [
             { x: 4, y: -2, alt: 2500 },
             { x: 3, y: -4, alt: 2000 },
-            { x: 0.8, y: -3, alt: 1800 }
+            { x: 0.8, y: -3, alt: 1500 },
+            { x: -0.51, y: 1.41, alt: 906, hidden: true, isThreshold: true }
         ]
     },
     {
@@ -831,7 +832,8 @@ var APPROACH_ROUTES = [
         waypoints: [
             { x: -5, y: -2, alt: 2500 },
             { x: -3, y: -4, alt: 2000 },
-            { x: 0.8, y: -3, alt: 1800 }
+            { x: 0.8, y: -3, alt: 1500 },
+            { x: -0.51, y: 1.41, alt: 906, hidden: true, isThreshold: true }
         ]
     },
     {
@@ -840,7 +842,8 @@ var APPROACH_ROUTES = [
         color: '#cc8844',
         waypoints: [
             { x: 0.6, y: -8, alt: 2500 },
-            { x: 0.8, y: -3, alt: 1800 }
+            { x: 0.8, y: -3, alt: 1500 },
+            { x: -0.51, y: 1.41, alt: 906, hidden: true, isThreshold: true }
         ]
     }
 ];
@@ -970,16 +973,45 @@ Aircraft.prototype.update = function(dt) {
             } else {
                 var arHdg = (Math.atan2(arDx, arDy) * 180 / Math.PI + 360) % 360;
                 this.targetHeading = arHdg;
-                if (arWp.alt && arWp.alt < this.altitude) {
+                // Always descend toward waypoint altitude
+                if (arWp.alt !== undefined) {
                     this.targetAlt = arWp.alt;
+                }
+                // Slow down approaching threshold
+                if (arWp.isThreshold) {
+                    this.targetSpeed = this.typeDef.speed.min + 5;
                 }
             }
         } else {
-            // Route complete - auto handoff to tower + ILS
+            // Route complete (reached threshold) - land
             this.approachRoute = null;
-            this.ilsCleared = true;
-            this.handedOff = true;
-            addMessage('[APP] ' + this.callsign + ' タワーへハンドオフ - ILS RWY' + game.airport.runways[0].id, 'info');
+            if (this.altitude < game.airport.elevation + 200) {
+                this.status = 'landing';
+                this.landed = true;
+                this.handedOff = true;
+                playLanding();
+                addMessage('[TWR] ' + this.callsign + ' RWY' + game.airport.runways[0].id + ' タッチダウン!', 'success');
+                game.score += 100;
+                game.landedCount++;
+                return;
+            } else {
+                // Too high at threshold - go around
+                addMessage(this.callsign + ' ゴーアラウンド - 高度超過', 'warn');
+                this.ilsCleared = false;
+                this.handedOff = false;
+                this.targetAlt = 3000;
+                this.targetHeading = game.airport.runways[0].heading;
+                this.targetSpeed = this.typeDef.speed.cruise;
+                this.status = 'enroute';
+                this.holding = true;
+                this.goAround = true;
+                this._msgApproach = false;
+                this._msgFinal = false;
+                game.score -= 50;
+                game.goAroundCount++;
+                playWarning();
+                addMessage(this.callsign + ' ホールド中 - 再アプローチ指示待ち', 'info');
+            }
         }
     }
 
