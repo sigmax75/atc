@@ -388,6 +388,10 @@ body {
     background: #220022;
 }
 
+.approach-btn { background: #1a4a2a; color: #4caf84; }
+.approach-btn:hover { background: #2a5a3a; }
+.approach-btn:disabled { background: #1a1a2e; color: #444; }
+
 /* Result screen */
 #result-overlay {
     display: none;
@@ -555,6 +559,7 @@ body {
                     <button class="cmd-btn ils-btn" id="cmd-ils" disabled>TWRハンドオフ</button>
                     <button class="cmd-btn contact-btn" id="cmd-contact" disabled>コンタクト</button>
                     <button class="cmd-btn hold-btn" id="cmd-hold">ホールド</button>
+                    <button class="cmd-btn approach-btn" id="cmd-approach">APP選択</button>
                 </div>
             </div>
         </div>
@@ -691,6 +696,39 @@ var RJFK = {
     ]
 };
 
+// Predefined approach routes for vectoring
+var APPROACH_ROUTES = [
+    {
+        name: 'Right Base',
+        label: 'R-BASE',
+        color: '#00aa66',
+        waypoints: [
+            { x: 3, y: -3, alt: 2500 },
+            { x: 1, y: -5, alt: 2000 },
+            { x: -0.3, y: -5, alt: 1800 }
+        ]
+    },
+    {
+        name: 'Left Base',
+        label: 'L-BASE',
+        color: '#6688cc',
+        waypoints: [
+            { x: -5, y: -3, alt: 2500 },
+            { x: -2, y: -5, alt: 2000 },
+            { x: -0.3, y: -5, alt: 1800 }
+        ]
+    },
+    {
+        name: 'Long Final',
+        label: 'L-FINAL',
+        color: '#cc8844',
+        waypoints: [
+            { x: 0, y: -8, alt: 3000 },
+            { x: 0, y: -5, alt: 2000 }
+        ]
+    }
+];
+
 // ===== Aircraft Types =====
 var AIRCRAFT_TYPES = {
     'B777': { category: 'H', name: 'Boeing 777', speed: { min: 140, cruise: 250, max: 300 }, climbRate: 2000, descendRate: 1500, turnRate: 2.5, separation: 6 },
@@ -739,6 +777,7 @@ function Aircraft(callsign, type, role, entry) {
     this.goAround = false;
     this.takeoffRoll = false;
     this.takeoffTimer = 0;
+    this.approachRoute = null;
 }
 
 Aircraft.prototype.update = function(dt) {
@@ -802,6 +841,29 @@ Aircraft.prototype.update = function(dt) {
         }
     }
 
+    // Approach route following
+    if (!this.holding && !this.ilsCleared && this.approachRoute) {
+        var ar = this.approachRoute;
+        if (ar.currentIndex < ar.waypoints.length) {
+            var arWp = ar.waypoints[ar.currentIndex];
+            var arDx = arWp.x - this.x;
+            var arDy = arWp.y - this.y;
+            var arDist = Math.sqrt(arDx * arDx + arDy * arDy);
+            if (arDist < 1.0) {
+                ar.currentIndex++;
+            } else {
+                var arHdg = (Math.atan2(arDx, arDy) * 180 / Math.PI + 360) % 360;
+                this.targetHeading = arHdg;
+                if (arWp.alt && arWp.alt < this.altitude) {
+                    this.targetAlt = arWp.alt;
+                }
+            }
+        } else {
+            // Route complete - clear it
+            this.approachRoute = null;
+        }
+    }
+
     // Direct to waypoint (player instruction)
     if (!this.holding && !this.ilsCleared && this.directToWaypoint) {
         var dtWp = this.directToWaypoint;
@@ -848,7 +910,7 @@ Aircraft.prototype.update = function(dt) {
     // STAR/SID waypoint following with turn anticipation
     var routeWps = null;
     var routeStatus = null;
-    if (!this.holding && !this.ilsCleared && !this.directToWaypoint && this.starName && this.status === 'enroute') {
+    if (!this.holding && !this.ilsCleared && !this.directToWaypoint && !this.approachRoute && this.starName && this.status === 'enroute') {
         for (var si = 0; si < game.airport.stars.length; si++) {
             if (game.airport.stars[si].name === this.starName) { routeWps = game.airport.stars[si].waypoints; break; }
         }
@@ -1109,7 +1171,8 @@ var game = {
     waveIndex: 0,
     warningPlayed: {},
     messages: [],
-    paused: false
+    paused: false,
+    approachRouteMode: false
 };
 
 // ===== DOM References =====
@@ -1267,6 +1330,12 @@ function initDOM() {
         updateCommandPanel();
     });
 
+    document.getElementById('cmd-approach').addEventListener('click', function() {
+        if (!game.selectedAC || game.selectedAC.role !== 'arrival') return;
+        game.approachRouteMode = !game.approachRouteMode;
+        playClick();
+    });
+
     // Speed buttons
     document.querySelectorAll('.speed-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -1319,6 +1388,7 @@ function startGame() {
     game.waveIndex = 0;
     game.warningPlayed = {};
     game.messages = [];
+    game.approachRouteMode = false;
     game.scenario = SCENARIO_RJFK;
     game.airport = SCENARIO_RJFK.airport;
     game.timeLimit = SCENARIO_RJFK.timeLimit;
@@ -1429,6 +1499,39 @@ function onCanvasClick(e) {
     var cy = canvas.height / 2;
     var scale = Math.min(canvas.width, canvas.height) / (game.range * 2.2);
 
+    // Check approach route click
+    if (game.approachRouteMode && game.selectedAC) {
+        var routeClicked = false;
+        APPROACH_ROUTES.forEach(function(route, ri) {
+            if (routeClicked) return;
+            // Check click near route waypoints or line
+            route.waypoints.forEach(function(wp) {
+                if (routeClicked) return;
+                var rwx = cx + wp.x * scale;
+                var rwy2 = cy - wp.y * scale;
+                var rdx = mx - rwx;
+                var rdy = my - rwy2;
+                if (Math.sqrt(rdx * rdx + rdy * rdy) < 20) {
+                    assignApproachRoute(game.selectedAC, route);
+                    routeClicked = true;
+                }
+            });
+
+            if (routeClicked) return;
+            // Also check label area
+            var midWp = route.waypoints[Math.floor(route.waypoints.length / 2)];
+            var labelX = cx + midWp.x * scale;
+            var labelY = cy - midWp.y * scale;
+            var ldx = mx - labelX;
+            var ldy = my - labelY;
+            if (Math.abs(ldx) < 40 && Math.abs(ldy) < 15) {
+                assignApproachRoute(game.selectedAC, route);
+                routeClicked = true;
+            }
+        });
+        if (routeClicked) return;
+    }
+
     var clicked = null;
     game.aircraft.forEach(function(ac) {
         if (ac.landed || ac.departed) return;
@@ -1448,6 +1551,21 @@ function onCanvasClick(e) {
     }
 }
 
+function assignApproachRoute(ac, route) {
+    // Set approach route waypoints as sequential direct-to
+    ac.approachRoute = {
+        name: route.name,
+        waypoints: route.waypoints.slice(), // copy
+        currentIndex: 0
+    };
+    ac.holding = false;
+    ac.directToWaypoint = null;
+    playClick();
+    addMessage(ac.callsign + ' ' + route.name + ' アプローチ指定', 'info');
+    game.approachRouteMode = false;
+    updateCommandPanel();
+}
+
 function selectAircraft(ac) {
     deselectAll();
     ac.selected = true;
@@ -1460,6 +1578,7 @@ function selectAircraft(ac) {
 function deselectAll() {
     game.aircraft.forEach(function(ac) { ac.selected = false; });
     game.selectedAC = null;
+    game.approachRouteMode = false;
     cmdPanel.style.display = 'none';
     updateStrips();
 }
@@ -1503,6 +1622,29 @@ function showCommand(ac) {
         cmdWaypoint.value = ac.directToWaypoint.name;
     }
 
+    // Check if approach route selection is available
+    var routeAvailable = false;
+    if (ac.role === 'arrival' && !ac.ilsCleared && !ac.handedOff) {
+        // Check if STAR is complete or no STAR
+        var starComplete = true;
+        if (ac.starName) {
+            var acStar = null;
+            for (var ri = 0; ri < game.airport.stars.length; ri++) {
+                if (game.airport.stars[ri].name === ac.starName) { acStar = game.airport.stars[ri]; break; }
+            }
+            if (acStar && ac.currentWaypoint < acStar.waypoints.length) {
+                starComplete = false;
+            }
+        }
+        if (starComplete) {
+            routeAvailable = true;
+            game.approachRouteMode = true;
+        }
+    }
+    if (!routeAvailable) {
+        game.approachRouteMode = false;
+    }
+
     updateCommandPanel();
 }
 
@@ -1527,6 +1669,24 @@ function updateCommandPanel() {
         cmdContact.disabled = false;
     } else {
         cmdContact.disabled = true;
+    }
+
+    // Approach route button
+    var cmdApproach = document.getElementById('cmd-approach');
+    if (ac.role === 'arrival' && !ac.ilsCleared && !ac.handedOff && !ac.approachRoute) {
+        // Check STAR complete
+        var starDone = true;
+        if (ac.starName) {
+            for (var sti = 0; sti < game.airport.stars.length; sti++) {
+                if (game.airport.stars[sti].name === ac.starName) {
+                    if (ac.currentWaypoint < game.airport.stars[sti].waypoints.length) starDone = false;
+                    break;
+                }
+            }
+        }
+        cmdApproach.disabled = !starDone;
+    } else {
+        cmdApproach.disabled = true;
     }
 
     // Hold button text
@@ -1952,7 +2112,9 @@ function render() {
 
         // Target waypoint name
         var targetWpName = '';
-        if (ac.directToWaypoint) {
+        if (ac.approachRoute && ac.approachRoute.currentIndex < ac.approachRoute.waypoints.length) {
+            targetWpName = '>' + ac.approachRoute.name;
+        } else if (ac.directToWaypoint) {
             targetWpName = '>' + ac.directToWaypoint.name;
         } else if (ac.handedOff) {
             targetWpName = 'TWR';
@@ -2024,6 +2186,58 @@ function render() {
             ctx.strokeRect(sx - 6, sy - 6, 12, 12);
         }
     });
+
+    // Approach route options
+    if (game.approachRouteMode && game.selectedAC) {
+        var selAC = game.selectedAC;
+        APPROACH_ROUTES.forEach(function(route, ri) {
+            ctx.strokeStyle = route.color;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+
+            // Start from aircraft position
+            var startX = cx + selAC.x * scale;
+            var startY = cy - selAC.y * scale;
+            ctx.moveTo(startX, startY);
+
+            // Draw through waypoints
+            route.waypoints.forEach(function(wp) {
+                var wx = cx + wp.x * scale;
+                var wy = cy - wp.y * scale;
+                ctx.lineTo(wx, wy);
+            });
+
+            // Draw to threshold (landing point)
+            var rwy = game.airport.runways[0];
+            var thX = cx + rwy.threshold.x * scale;
+            var thY = cy - rwy.threshold.y * scale;
+            ctx.lineTo(thX, thY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Route label at midpoint
+            var midWp = route.waypoints[Math.floor(route.waypoints.length / 2)];
+            var labelX = cx + midWp.x * scale;
+            var labelY = cy - midWp.y * scale;
+
+            ctx.fillStyle = route.color;
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillText(route.label, labelX + 8, labelY - 4);
+
+            // Clickable indicator (circle at first waypoint)
+            var firstWp = route.waypoints[0];
+            var fwX = cx + firstWp.x * scale;
+            var fwY = cy - firstWp.y * scale;
+            ctx.beginPath();
+            ctx.arc(fwX, fwY, 8, 0, Math.PI * 2);
+            ctx.strokeStyle = route.color;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            ctx.stroke();
+        });
+        ctx.lineWidth = 1;
+    }
 
     // Airport center marker
     ctx.fillStyle = '#555555';
