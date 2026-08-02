@@ -2532,6 +2532,66 @@ function render() {
         ctx.lineWidth = 1;
     }
 
+    // Selected aircraft planned route
+    if (game.selectedAC && !game.approachRouteMode) {
+        var sac = game.selectedAC;
+        if (!sac.landed && !sac.departed) {
+            var routePts = [];
+            routePts.push({ x: sac.x, y: sac.y });
+
+            // Approach route remaining waypoints
+            if (sac.approachRoute && sac.approachRoute.currentIndex < sac.approachRoute.waypoints.length) {
+                for (var ri = sac.approachRoute.currentIndex; ri < sac.approachRoute.waypoints.length; ri++) {
+                    routePts.push(sac.approachRoute.waypoints[ri]);
+                }
+            }
+            // Direct-to waypoint
+            else if (sac.directToWaypoint) {
+                routePts.push(sac.directToWaypoint);
+            }
+            // STAR remaining
+            else if (sac.starName && sac.status === 'enroute') {
+                var sacStar = null;
+                for (var sti = 0; sti < game.airport.stars.length; sti++) {
+                    if (game.airport.stars[sti].name === sac.starName) { sacStar = game.airport.stars[sti]; break; }
+                }
+                if (sacStar) {
+                    for (var swi = sac.currentWaypoint; swi < sacStar.waypoints.length; swi++) {
+                        routePts.push(sacStar.waypoints[swi]);
+                    }
+                }
+            }
+            // SID remaining
+            else if (sac.sidName && sac.status === 'departing') {
+                var sacSid = null;
+                for (var sdi = 0; sdi < game.airport.sids.length; sdi++) {
+                    if (game.airport.sids[sdi].name === sac.sidName) { sacSid = game.airport.sids[sdi]; break; }
+                }
+                if (sacSid) {
+                    for (var swi2 = sac.currentWaypoint; swi2 < sacSid.waypoints.length; swi2++) {
+                        routePts.push(sacSid.waypoints[swi2]);
+                    }
+                }
+            }
+
+            if (routePts.length > 1) {
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]);
+                ctx.beginPath();
+                routePts.forEach(function(pt, pi) {
+                    var px = cx + pt.x * scale;
+                    var py = cy - pt.y * scale;
+                    if (pi === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                });
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.lineWidth = 1;
+            }
+        }
+    }
+
     // Airport center marker
     ctx.fillStyle = '#555555';
     ctx.beginPath();
