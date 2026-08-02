@@ -2587,16 +2587,28 @@ function render() {
             }
 
             if (routePts.length > 1) {
+                // Convert to screen coords
+                var screenPts = routePts.map(function(pt) {
+                    return { x: cx + pt.x * scale, y: cy - pt.y * scale };
+                });
                 ctx.strokeStyle = '#ffff00';
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([6, 4]);
                 ctx.beginPath();
-                routePts.forEach(function(pt, pi) {
-                    var px = cx + pt.x * scale;
-                    var py = cy - pt.y * scale;
-                    if (pi === 0) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
-                });
+                ctx.moveTo(screenPts[0].x, screenPts[0].y);
+                for (var spi = 1; spi < screenPts.length; spi++) {
+                    if (spi < screenPts.length - 1) {
+                        // Smooth curve through intermediate points
+                        var curr = screenPts[spi];
+                        var next = screenPts[spi + 1];
+                        var midX = (curr.x + next.x) / 2;
+                        var midY = (curr.y + next.y) / 2;
+                        ctx.quadraticCurveTo(curr.x, curr.y, midX, midY);
+                    } else {
+                        // Last point - straight line
+                        ctx.lineTo(screenPts[spi].x, screenPts[spi].y);
+                    }
+                }
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.lineWidth = 1;
