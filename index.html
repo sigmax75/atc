@@ -821,52 +821,52 @@ Aircraft.prototype.update = function(dt) {
         }
     }
 
-    // STAR/SID waypoint following
+    // STAR/SID waypoint following with turn anticipation
+    var routeWps = null;
+    var routeStatus = null;
     if (!this.holding && !this.ilsCleared && !this.directToWaypoint && this.starName && this.status === 'enroute') {
-        var star = null;
         for (var si = 0; si < game.airport.stars.length; si++) {
-            if (game.airport.stars[si].name === this.starName) { star = game.airport.stars[si]; break; }
+            if (game.airport.stars[si].name === this.starName) { routeWps = game.airport.stars[si].waypoints; break; }
         }
-        if (star && this.currentWaypoint < star.waypoints.length) {
-            var wp = star.waypoints[this.currentWaypoint];
-            var wpDx = wp.x - this.x;
-            var wpDy = wp.y - this.y;
-            var wpDist = Math.sqrt(wpDx * wpDx + wpDy * wpDy);
-            if (wpDist < 1.5) {
-                this.currentWaypoint++;
-                if (this.currentWaypoint < star.waypoints.length) {
-                    var nextWp = star.waypoints[this.currentWaypoint];
-                    this.targetAlt = nextWp.alt;
-                }
-            } else {
-                var wpHdg = (Math.atan2(wpDx, wpDy) * 180 / Math.PI + 360) % 360;
-                this.targetHeading = wpHdg;
-                if (wp.alt && wp.alt < this.altitude) {
-                    this.targetAlt = wp.alt;
-                }
-            }
-        }
+        routeStatus = 'star';
     }
-
     if (!this.holding && !this.ilsCleared && !this.directToWaypoint && this.sidName && this.status === 'departing') {
-        var sid = null;
         for (var di = 0; di < game.airport.sids.length; di++) {
-            if (game.airport.sids[di].name === this.sidName) { sid = game.airport.sids[di]; break; }
+            if (game.airport.sids[di].name === this.sidName) { routeWps = game.airport.sids[di].waypoints; break; }
         }
-        if (sid && this.currentWaypoint < sid.waypoints.length) {
-            var swp = sid.waypoints[this.currentWaypoint];
-            var swpDx = swp.x - this.x;
-            var swpDy = swp.y - this.y;
-            var swpDist = Math.sqrt(swpDx * swpDx + swpDy * swpDy);
-            if (swpDist < 1.5) {
-                this.currentWaypoint++;
-                if (this.currentWaypoint < sid.waypoints.length) {
-                    var nextSwp = sid.waypoints[this.currentWaypoint];
-                    this.targetAlt = nextSwp.alt;
-                }
-            } else {
-                var swpHdg = (Math.atan2(swpDx, swpDy) * 180 / Math.PI + 360) % 360;
-                this.targetHeading = swpHdg;
+        routeStatus = 'sid';
+    }
+    if (routeWps && this.currentWaypoint < routeWps.length) {
+        var wp = routeWps[this.currentWaypoint];
+        var wpDx = wp.x - this.x;
+        var wpDy = wp.y - this.y;
+        var wpDist = Math.sqrt(wpDx * wpDx + wpDy * wpDy);
+
+        // Turn anticipation: start turning earlier based on speed and angle to next wp
+        var captureRadius = 0.8;
+        if (this.currentWaypoint + 1 < routeWps.length) {
+            var nextWp = routeWps[this.currentWaypoint + 1];
+            var toCurrentHdg = (Math.atan2(wpDx, wpDy) * 180 / Math.PI + 360) % 360;
+            var toNextDx = nextWp.x - wp.x;
+            var toNextDy = nextWp.y - wp.y;
+            var toNextHdg = (Math.atan2(toNextDx, toNextDy) * 180 / Math.PI + 360) % 360;
+            var turnAngle = Math.abs(((toNextHdg - toCurrentHdg + 540) % 360) - 180);
+            // Larger turn = earlier capture (speed in nm/s * turn time)
+            var turnTimeSec = turnAngle / this.typeDef.turnRate;
+            captureRadius = Math.max(0.5, Math.min(3, (this.speed / 3600) * turnTimeSec * 0.5));
+        }
+
+        if (wpDist < captureRadius) {
+            this.currentWaypoint++;
+            if (this.currentWaypoint < routeWps.length) {
+                var nwp = routeWps[this.currentWaypoint];
+                if (nwp.alt) this.targetAlt = nwp.alt;
+            }
+        } else {
+            var wpHdg = (Math.atan2(wpDx, wpDy) * 180 / Math.PI + 360) % 360;
+            this.targetHeading = wpHdg;
+            if (wp.alt && routeStatus === 'star' && wp.alt < this.altitude) {
+                this.targetAlt = wp.alt;
             }
         }
     }
@@ -1552,6 +1552,24 @@ function gameLoop(timestamp) {
             ac.starName = def.star || null;
             ac.sidName = def.sid || (def.role === 'departure' && game.airport.sids.length > 0 ? game.airport.sids[0].name : null);
             ac.currentWaypoint = 0;
+            // Set initial heading toward first reachable waypoint
+            if (ac.starName && def.role === 'arrival') {
+                for (var swi = 0; swi < game.airport.stars.length; swi++) {
+                    if (game.airport.stars[swi].name === ac.starName) {
+                        var starWps = game.airport.stars[swi].waypoints;
+                        for (var twi = 0; twi < starWps.length; twi++) {
+                            var iwDx = starWps[twi].x - ac.x;
+                            var iwDy = starWps[twi].y - ac.y;
+                            if (Math.sqrt(iwDx * iwDx + iwDy * iwDy) > 1) {
+                                ac.heading = (Math.atan2(iwDx, iwDy) * 180 / Math.PI + 360) % 360;
+                                ac.targetHeading = ac.heading;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
             game.aircraft.push(ac);
             if (def.role === 'arrival') {
                 addMessage(def.callsign + ' (' + def.type + ') レーダーコンタクト', 'info');
