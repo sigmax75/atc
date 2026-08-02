@@ -2189,7 +2189,6 @@ function render() {
 
     rings.forEach(function(r) {
         var radius = r * scale;
-        if (radius > maxR * 1.1) return;
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.stroke();
