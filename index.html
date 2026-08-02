@@ -1822,6 +1822,8 @@ function gameLoop(timestamp) {
             var b = game.aircraft[j];
             if (a.landed || a.departed || b.landed || b.departed) continue;
             if (a.status === 'ready' || b.status === 'ready') continue;
+            if (a.status === 'takeoff' || b.status === 'takeoff') continue;
+            if (a.handedOff || b.handedOff) continue;
             var result = checkSeparation(a, b);
             if (result === 'conflict') {
                 a.conflict = true;
