@@ -1030,14 +1030,14 @@ Aircraft.prototype.update = function(dt) {
             this.status = 'approach';
         }
 
-        // Landing check
-        if (dist < 1.5 && this.altitude < game.airport.elevation + 800) {
+        // Landing check - must be near threshold, low altitude, correct heading, approaching from correct side
+        if (dist < 0.4 && this.altitude < game.airport.elevation + 300 && alongTrack < 0.5) {
             var hdgDiff = Math.abs(((this.heading - rwyHdg + 540) % 360) - 180);
-            if (hdgDiff < 60) {
+            if (hdgDiff < 30) {
                 this.status = 'landing';
                 this.landed = true;
                 playLanding();
-                addMessage(this.callsign + ' 着陸成功!', 'success');
+                addMessage(this.callsign + ' RWY' + rwy.id + ' 着陸!', 'success');
                 game.score += 100;
                 game.landedCount++;
                 return;
@@ -1045,7 +1045,7 @@ Aircraft.prototype.update = function(dt) {
         }
 
         // Missed approach - passed threshold and too high
-        if (dist < 0.3 && this.altitude > game.airport.elevation + 800) {
+        if (alongTrack > 0.5 && this.altitude > game.airport.elevation + 500) {
             addMessage(this.callsign + ' ゴーアラウンド - 高度超過', 'warn');
             this.ilsCleared = false;
             this.handedOff = false;
