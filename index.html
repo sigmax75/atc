@@ -685,8 +685,8 @@ var RJFK = {
     sids: [
         {
             name: 'KAGOSHIMA DEP', waypoints: [
-                { name: 'RWY34', x: -0.51, y: 1.41, alt: 500 },
-                { name: 'DER', x: -1.5, y: 4, alt: 1500 },
+                { name: 'RWY34', x: -0.51, y: 1.41, alt: 500, hidden: true },
+                { name: 'DER', x: -0.51, y: 1.41, alt: 1500, hidden: true },
                 { name: 'TURNH', x: -8, y: -8, alt: 5000 },
                 { name: 'CLIMB', x: -15, y: -15, alt: 10000 }
             ]
@@ -1493,7 +1493,7 @@ function showCommand(ac) {
     });
     game.airport.sids.forEach(function(s) {
         s.waypoints.forEach(function(wp) {
-            if (!wpSet[wp.name]) {
+            if (!wpSet[wp.name] && !wp.hidden) {
                 wpSet[wp.name] = true;
                 var opt = document.createElement('option');
                 opt.value = wp.name;
@@ -1819,10 +1819,11 @@ function render() {
     });
 
     game.airport.sids.forEach(function(sid) {
+        var visibleWps = sid.waypoints.filter(function(wp) { return !wp.hidden; });
         ctx.strokeStyle = '#222200';
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        sid.waypoints.forEach(function(wp, i) {
+        visibleWps.forEach(function(wp, i) {
             var sx = cx + wp.x * scale;
             var sy = cy - wp.y * scale;
             if (i === 0) ctx.moveTo(sx, sy);
@@ -1831,7 +1832,7 @@ function render() {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        sid.waypoints.forEach(function(wp) {
+        visibleWps.forEach(function(wp) {
             var sx = cx + wp.x * scale;
             var sy = cy - wp.y * scale;
             ctx.fillStyle = '#666600';
@@ -1970,7 +1971,8 @@ function render() {
                 if (game.airport.sids[di2].name === ac.sidName) { acSid = game.airport.sids[di2]; break; }
             }
             if (acSid && ac.currentWaypoint < acSid.waypoints.length) {
-                targetWpName = '>' + acSid.waypoints[ac.currentWaypoint].name;
+                var sidWp = acSid.waypoints[ac.currentWaypoint];
+                targetWpName = sidWp.hidden ? '' : '>' + sidWp.name;
             }
         } else if (ac.status === 'ready') {
             targetWpName = 'RDY';
