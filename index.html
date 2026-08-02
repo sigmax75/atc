@@ -921,8 +921,14 @@ Aircraft.prototype.update = function(dt) {
                 var odx = other.x - rwy.threshold.x;
                 var ody = other.y - rwy.threshold.y;
                 var odist = Math.sqrt(odx * odx + ody * ody);
+                // Runway vicinity check
                 if (odist < 3 && other.altitude < 1000) runwayClear = false;
-                if (other.ilsCleared && odist < 5 && other.altitude < 3000) runwayClear = false;
+                // On ILS approach
+                if (other.ilsCleared && odist < 8) runwayClear = false;
+                // On approach route heading to runway
+                if (other.approachRoute && odist < 8) runwayClear = false;
+                // Handed off to tower
+                if (other.handedOff) runwayClear = false;
             }.bind(this));
             if (runwayClear) {
                 this.takeoffRoll = true;
