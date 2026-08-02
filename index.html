@@ -950,6 +950,10 @@ Aircraft.prototype.update = function(dt) {
             if (this.currentWaypoint < routeWps.length) {
                 var nwp = routeWps[this.currentWaypoint];
                 if (nwp.alt) this.targetAlt = nwp.alt;
+            } else if (routeStatus === 'star') {
+                // STAR complete - auto hold until player assigns approach
+                this.holding = true;
+                addMessage(this.callsign + ' STAR完了 - アプローチ指示待ち', 'info');
             }
         } else {
             var wpHdg = (Math.atan2(wpDx, wpDy) * 180 / Math.PI + 360) % 360;
@@ -1305,6 +1309,8 @@ function initDOM() {
         ac.ilsCleared = true;
         ac.holding = false;
         ac.handedOff = true;
+        ac.directToWaypoint = null;
+        ac.approachRoute = null;
         playClick();
         addMessage(ac.callsign + ' タワーへハンドオフ - ILS RWY' + rwy.id, 'info');
         updateCommandPanel();
@@ -2135,12 +2141,12 @@ function render() {
 
         // Target waypoint name
         var targetWpName = '';
-        if (ac.approachRoute && ac.approachRoute.currentIndex < ac.approachRoute.waypoints.length) {
+        if (ac.handedOff) {
+            targetWpName = 'TWR';
+        } else if (ac.approachRoute && ac.approachRoute.currentIndex < ac.approachRoute.waypoints.length) {
             targetWpName = '>' + ac.approachRoute.name;
         } else if (ac.directToWaypoint) {
             targetWpName = '>' + ac.directToWaypoint.name;
-        } else if (ac.handedOff) {
-            targetWpName = 'TWR';
         } else if (ac.starName && ac.status === 'enroute') {
             var acStar = null;
             for (var si2 = 0; si2 < game.airport.stars.length; si2++) {
